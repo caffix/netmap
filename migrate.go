@@ -37,7 +37,7 @@ func (g *Graph) Migrate(to *Graph) error {
 
 // MigrateEvents copies the nodes and edges related to the Events identified by the uuids from the receiver Graph into another.
 func (g *Graph) MigrateEvents(to *Graph, uuids ...string) error {
-	quads, err := g.readEventQuads(uuids...)
+	quads, err := g.ReadEventQuads(uuids...)
 
 	if err == nil {
 		err = copyQuads(to.db, quads)

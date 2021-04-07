@@ -220,7 +220,8 @@ func (g *Graph) EventDateRange(uuid string) (time.Time, time.Time) {
 	return start, finish
 }
 
-func (g *Graph) readEventQuads(uuids ...string) ([]quad.Quad, error) {
+// ReadEventQuads returns all graph database quads associated with the provided events.
+func (g *Graph) ReadEventQuads(uuids ...string) ([]quad.Quad, error) {
 	g.db.Lock()
 	defer g.db.Unlock()
 
