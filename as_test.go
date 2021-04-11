@@ -43,5 +43,17 @@ func TestAS(t *testing.T) {
 				t.Errorf("Expected: %v\nGot: %v\n", newdesc, got)
 			}
 		})
+
+		t.Run("Testing ReadASPrefixes", func(t *testing.T) {
+			var got []string
+
+			if asn, err := strconv.Atoi(tt.ASNString); err == nil {
+				got = g.ReadASPrefixes(asn)
+			}
+
+			if len(got) != 1 || got[0] != tt.CIDR {
+				t.Errorf("Expected: %v\nGot: %v\n", tt.CIDR, got)
+			}
+		})
 	}
 }
