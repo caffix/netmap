@@ -52,15 +52,16 @@ func (g *Graph) MigrateEventsInScope(to *Graph, d []string) error {
 		return errors.New("MigrateEventsInScope: No domain names provided")
 	}
 
-	vals := make(map[string]struct{})
 	var domains []quad.Value
 	for _, domain := range d {
 		domains = append(domains, quad.IRI(domain))
 	}
 
+	vals := make(map[string]struct{})
+
 	g.db.Lock()
 	// Obtain the events that are in scope according to the domain name arguments
-	p := cayley.StartPath(g.db.store, domains...).LabelContext(quad.IRI(TypeFQDN)).SaveReverse(quad.IRI("domain"), "uuid")
+	p := cayley.StartPath(g.db.store, domains...).Has(quad.IRI("type"), quad.String(TypeFQDN)).SaveReverse(quad.IRI("domain"), "uuid")
 	err := p.Iterate(context.Background()).TagValues(nil, func(m map[string]quad.Value) {
 		vals[valToStr(m["uuid"])] = struct{}{}
 	})
