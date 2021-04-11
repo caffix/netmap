@@ -71,4 +71,7 @@ func TestMigrateEventsInScope(t *testing.T) {
 	if _, err := to.NamesToAddrs("event1", "www.caffix.net"); err == nil {
 		t.Errorf("The migration copied graph data that was out of scope")
 	}
+	if events := to.EventList(); len(events) != 1 || events[0] != "event1" {
+		t.Errorf("The migration copied events that are out of scope: Expected event1, Got %v", events)
+	}
 }

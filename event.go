@@ -132,7 +132,7 @@ func (g *Graph) EventsInScope(d ...string) []string {
 func (g *Graph) EventList() []string {
 	var events []string
 
-	if nodes, err := g.AllNodesOfType("event"); err == nil {
+	if nodes, err := g.AllNodesOfType(TypeEvent); err == nil {
 		ids := stringset.New()
 
 		for _, node := range nodes {
@@ -233,7 +233,7 @@ func (g *Graph) ReadEventQuads(uuids ...string) ([]quad.Quad, error) {
 	var quads []quad.Quad
 	nodeMap := make(map[string]quad.Value)
 	// Build quads for the events in scope
-	p := cayley.StartPath(g.db.store, events...).LabelContext(quad.IRI(TypeEvent))
+	p := cayley.StartPath(g.db.store, events...).Has(quad.IRI("type"), quad.String(TypeEvent))
 	p = p.Tag("subject").OutWithTags([]string{"predicate"}).Tag("object")
 	err := p.Iterate(context.Background()).TagValues(nil, func(m map[string]quad.Value) {
 		if isIRI(m["object"]) {
@@ -257,7 +257,7 @@ func (g *Graph) ReadEventQuads(uuids ...string) ([]quad.Quad, error) {
 	}
 
 	// Build quads for all nodes associated with the events in scope
-	p = cayley.StartPath(g.db.store, nodes...)
+	p = cayley.StartPath(g.db.store, nodes...).Has(quad.IRI("type"))
 	p = p.Tag("subject").OutWithTags([]string{"predicate"}).Tag("object")
 	err = p.Iterate(context.Background()).TagValues(nil, func(m map[string]quad.Value) {
 		var label quad.Value
