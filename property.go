@@ -19,18 +19,18 @@ type Property struct {
 }
 
 // UpsertProperty implements the GraphDatabase interface.
-func (g *CayleyGraph) UpsertProperty(node Node, predicate, value string) error {
+func (g *Graph) UpsertProperty(node Node, predicate, value string) error {
 	t := graph.NewTransaction()
 
 	id := g.NodeToID(node)
-	if !g.nodeExists(id, "") {
+	if !g.db.nodeExists(id, "") {
 		return fmt.Errorf("%s: UpsertProperty: Invalid node reference argument", g.String())
 	}
 
-	if err := g.quadsUpsertProperty(t, id, predicate, value); err != nil {
+	if err := g.db.quadsUpsertProperty(t, id, predicate, value); err != nil {
 		return err
 	}
-	return g.applyWithLock(t)
+	return g.db.applyWithLock(t)
 }
 
 func (g *CayleyGraph) quadsUpsertProperty(t *graph.Transaction, id, predicate string, value interface{}) error {
@@ -45,18 +45,18 @@ func (g *CayleyGraph) quadsUpsertProperty(t *graph.Transaction, id, predicate st
 }
 
 // ReadProperties implements the GraphDatabase interface.
-func (g *CayleyGraph) ReadProperties(node Node, predicates ...string) ([]*Property, error) {
-	g.Lock()
-	defer g.Unlock()
+func (g *Graph) ReadProperties(node Node, predicates ...string) ([]*Property, error) {
+	g.db.Lock()
+	defer g.db.Unlock()
 
 	nstr := g.NodeToID(node)
 	var properties []*Property
 
-	if nstr == "" || !g.nodeExists(nstr, "") {
+	if nstr == "" || !g.db.nodeExists(nstr, "") {
 		return properties, fmt.Errorf("%s: ReadProperties: Invalid node reference argument", g.String())
 	}
 
-	p := cayley.StartPath(g.store, quad.IRI(nstr))
+	p := cayley.StartPath(g.db.store, quad.IRI(nstr))
 	if len(predicates) == 0 {
 		p = p.OutWithTags([]string{"predicate"})
 	} else {
@@ -79,16 +79,16 @@ func (g *CayleyGraph) ReadProperties(node Node, predicates ...string) ([]*Proper
 }
 
 // CountProperties implements the GraphDatabase interface.
-func (g *CayleyGraph) CountProperties(node Node, predicates ...string) (int, error) {
-	g.Lock()
-	defer g.Unlock()
+func (g *Graph) CountProperties(node Node, predicates ...string) (int, error) {
+	g.db.Lock()
+	defer g.db.Unlock()
 
 	nstr := g.NodeToID(node)
-	if nstr == "" || !g.nodeExists(nstr, "") {
+	if nstr == "" || !g.db.nodeExists(nstr, "") {
 		return 0, fmt.Errorf("%s: CountProperties: Invalid node reference argument", g.String())
 	}
 
-	p := cayley.StartPath(g.store, quad.IRI(nstr))
+	p := cayley.StartPath(g.db.store, quad.IRI(nstr))
 	if len(predicates) == 0 {
 		p = p.Out()
 	} else {
@@ -105,15 +105,15 @@ func (g *CayleyGraph) CountProperties(node Node, predicates ...string) (int, err
 }
 
 // DeleteProperty implements the GraphDatabase interface.
-func (g *CayleyGraph) DeleteProperty(node Node, predicate string, value interface{}) error {
-	g.Lock()
-	defer g.Unlock()
+func (g *Graph) DeleteProperty(node Node, predicate string, value interface{}) error {
+	g.db.Lock()
+	defer g.db.Unlock()
 
 	v, ok := quad.AsValue(value)
 	nstr := g.NodeToID(node)
-	if !ok || nstr == "" || !g.nodeExists(nstr, "") {
+	if !ok || nstr == "" || !g.db.nodeExists(nstr, "") {
 		return fmt.Errorf("%s: DeleteProperty: Invalid node reference argument", g.String())
 	}
 
-	return g.store.RemoveQuad(quad.Make(quad.IRI(nstr), quad.IRI(predicate), v, nil))
+	return g.db.store.RemoveQuad(quad.Make(quad.IRI(nstr), quad.IRI(predicate), v, nil))
 }

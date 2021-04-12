@@ -148,8 +148,8 @@ func (g *Graph) IsTLDNode(fqdn string) bool {
 }
 
 func (g *Graph) checkForInEdge(id, predicate string) bool {
-	if node, err := g.db.ReadNode(id, TypeFQDN); err == nil {
-		count, err := g.db.CountInEdges(node, predicate)
+	if node, err := g.ReadNode(id, TypeFQDN); err == nil {
+		count, err := g.CountInEdges(node, predicate)
 
 		if err == nil && count > 0 {
 			return true
@@ -160,8 +160,8 @@ func (g *Graph) checkForInEdge(id, predicate string) bool {
 }
 
 func (g *Graph) checkForOutEdge(id, predicate string) bool {
-	if node, err := g.db.ReadNode(id, TypeFQDN); err == nil {
-		count, err := g.db.CountOutEdges(node, predicate)
+	if node, err := g.ReadNode(id, TypeFQDN); err == nil {
+		count, err := g.CountOutEdges(node, predicate)
 
 		if err == nil && count > 0 {
 			return true

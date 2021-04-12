@@ -31,7 +31,7 @@ func (g *Graph) UpsertEvent(eventID string) (Node, error) {
 }
 
 func (g *Graph) quadsUpsertEvent(t *graph.Transaction, eventID string) error {
-	if err := g.db.quadsUpsertNode(t, eventID, "event"); err != nil {
+	if err := g.db.quadsUpsertNode(t, eventID, TypeEvent); err != nil {
 		return err
 	}
 
@@ -68,7 +68,7 @@ func (g *Graph) quadsUpsertEvent(t *graph.Transaction, eventID string) error {
 func (g *Graph) AddNodeToEvent(node Node, source, eventID string) error {
 	t := graph.NewTransaction()
 
-	if err := g.quadsAddNodeToEvent(t, g.db.NodeToID(node), source, eventID); err != nil {
+	if err := g.quadsAddNodeToEvent(t, g.NodeToID(node), source, eventID); err != nil {
 		return err
 	}
 
@@ -83,7 +83,7 @@ func (g *Graph) quadsAddNodeToEvent(t *graph.Transaction, node, source, eventID 
 	if err := g.quadsUpsertEvent(t, eventID); err != nil {
 		return err
 	}
-	if err := g.quadsUpsertSource(t, source); err != nil {
+	if err := g.db.quadsUpsertSource(t, source); err != nil {
 		return err
 	}
 	if err := g.db.quadsUpsertEdge(t, "used", eventID, source); err != nil {
@@ -98,9 +98,9 @@ func (g *Graph) quadsAddNodeToEvent(t *graph.Transaction, node, source, eventID 
 
 // InEventScope checks if the Node parameter is within scope of the Event identified by the uuid parameter.
 func (g *Graph) InEventScope(node Node, uuid string, predicates ...string) bool {
-	if edges, err := g.db.ReadInEdges(node, predicates...); err == nil {
+	if edges, err := g.ReadInEdges(node, predicates...); err == nil {
 		for _, edge := range edges {
-			if g.db.NodeToID(edge.From) == uuid {
+			if g.NodeToID(edge.From) == uuid {
 				return true
 			}
 		}
@@ -136,7 +136,7 @@ func (g *Graph) EventList() []string {
 		ids := stringset.New()
 
 		for _, node := range nodes {
-			n := g.db.NodeToID(node)
+			n := g.NodeToID(node)
 
 			if !ids.Has(n) {
 				ids.Insert(n)
@@ -163,15 +163,15 @@ func (g *Graph) EventFQDNs(uuid string) []string {
 
 // EventDomains returns the domains that were involved in the event.
 func (g *Graph) EventDomains(uuid string) []string {
-	event, err := g.db.ReadNode(uuid, "event")
+	event, err := g.ReadNode(uuid, TypeEvent)
 	if err != nil {
 		return nil
 	}
 
 	domains := stringset.New()
-	if edges, err := g.db.ReadOutEdges(event, "domain"); err == nil {
+	if edges, err := g.ReadOutEdges(event, "domain"); err == nil {
 		for _, edge := range edges {
-			if d := g.db.NodeToID(edge.To); d != "" {
+			if d := g.NodeToID(edge.To); d != "" {
 				domains.Insert(d)
 			}
 		}
@@ -182,20 +182,20 @@ func (g *Graph) EventDomains(uuid string) []string {
 
 // EventSubdomains returns the subdomains discovered during the event(s).
 func (g *Graph) EventSubdomains(events ...string) []string {
-	nodes, err := g.AllNodesOfType("fqdn", events...)
+	nodes, err := g.AllNodesOfType(TypeFQDN, events...)
 	if err != nil {
 		return nil
 	}
 
 	var names []string
 	for _, n := range nodes {
-		d := g.db.NodeToID(n)
+		d := g.NodeToID(n)
 		etld, err := publicsuffix.EffectiveTLDPlusOne(d)
 		if err != nil || etld == d {
 			continue
 		}
 
-		names = append(names, g.db.NodeToID(n))
+		names = append(names, g.NodeToID(n))
 	}
 
 	return names
@@ -205,8 +205,8 @@ func (g *Graph) EventSubdomains(events ...string) []string {
 func (g *Graph) EventDateRange(uuid string) (time.Time, time.Time) {
 	var start, finish time.Time
 
-	if event, err := g.db.ReadNode(uuid, "event"); err == nil {
-		if properties, err := g.db.ReadProperties(event, "start", "finish"); err == nil {
+	if event, err := g.ReadNode(uuid, TypeEvent); err == nil {
+		if properties, err := g.ReadProperties(event, "start", "finish"); err == nil {
 			for _, p := range properties {
 				if t := p.Value.Native(); t != nil && p.Predicate == "start" {
 					start = t.(time.Time)

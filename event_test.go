@@ -4,7 +4,6 @@
 package netmap
 
 import (
-	"reflect"
 	"testing"
 	"time"
 
@@ -50,12 +49,8 @@ func TestEvent(t *testing.T) {
 		})
 
 		t.Run("Testing EventList...", func(t *testing.T) {
-			var want []string
-			got := g.EventList()
-
-			want = append(want, tt.EventID)
-			if !reflect.DeepEqual(got, want) {
-				t.Errorf("EventList expected %v\nGot:%v\n", got, want)
+			if got := g.EventList(); len(got) < 1 || got[0] != tt.EventID {
+				t.Errorf("EventList expected %v\nGot:%v\n", tt.EventID, got)
 			}
 		})
 

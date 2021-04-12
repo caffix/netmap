@@ -76,7 +76,7 @@ func (g *Graph) ReadASDescription(asn int) string {
 	var result string
 
 	asnstr := strconv.Itoa(asn)
-	if p, err := g.db.ReadProperties(Node(asnstr), "description"); err == nil && len(p) > 0 {
+	if p, err := g.ReadProperties(Node(asnstr), "description"); err == nil && len(p) > 0 {
 		result = valToStr(p[0].Value)
 	}
 
@@ -87,9 +87,9 @@ func (g *Graph) ReadASPrefixes(asn int) []string {
 	var prefixes []string
 
 	asnstr := strconv.Itoa(asn)
-	if edges, err := g.db.ReadOutEdges(Node(asnstr), "prefix"); err == nil {
+	if edges, err := g.ReadOutEdges(Node(asnstr), "prefix"); err == nil {
 		for _, edge := range edges {
-			prefixes = append(prefixes, g.db.NodeToID(edge.To))
+			prefixes = append(prefixes, g.NodeToID(edge.To))
 		}
 	}
 

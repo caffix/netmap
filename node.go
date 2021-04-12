@@ -17,27 +17,32 @@ import (
 type Node interface{}
 
 // NodeToID implements the GraphDatabase interface.
-func (g *CayleyGraph) NodeToID(n Node) string {
+func (g *Graph) NodeToID(n Node) string {
 	return n.(string)
 }
 
-// AllNodesOfType implements the GraphDatabase interface.
-func (g *CayleyGraph) AllNodesOfType(ntypes ...string) ([]Node, error) {
-	g.Lock()
-	defer g.Unlock()
+// AllNodesOfType provides all nodes in the graph of the identified
+// type within the optionally identified events.
+func (g *Graph) AllNodesOfType(ntype string, uuids ...string) ([]Node, error) {
+	g.db.Lock()
+	defer g.db.Unlock()
 
-	var types []quad.Value
-	for _, t := range ntypes {
-		types = append(types, quad.String(t))
+	var events []quad.Value
+	for _, uuid := range uuids {
+		events = append(events, quad.IRI(uuid))
+	}
+
+	var p *cayley.Path
+	if ntype != TypeEvent && len(events) > 0 {
+		p = cayley.StartPath(g.db.store, events...).Has(quad.IRI("type"), quad.String(TypeEvent)).Out().Has(quad.IRI("type"), quad.String(ntype))
+	} else {
+		p = cayley.StartPath(g.db.store).Has(quad.IRI("type"), quad.String(ntype))
 	}
 
 	var nodes []Node
 	filter := stringset.New()
-	p := cayley.StartPath(g.store).Has(quad.IRI("type"), types...)
 	err := p.Iterate(context.Background()).EachValue(nil, func(value quad.Value) {
-		nstr := valToStr(value)
-
-		if !filter.Has(nstr) {
+		if nstr := valToStr(value); !filter.Has(nstr) {
 			filter.Insert(nstr)
 			nodes = append(nodes, nstr)
 		}
@@ -50,17 +55,15 @@ func (g *CayleyGraph) AllNodesOfType(ntypes ...string) ([]Node, error) {
 }
 
 // AllOutNodes returns all the nodes that the parameter node has out edges to.
-func (g *CayleyGraph) AllOutNodes(node Node) ([]Node, error) {
-	g.Lock()
-	defer g.Unlock()
+func (g *Graph) AllOutNodes(node Node) ([]Node, error) {
+	g.db.Lock()
+	defer g.db.Unlock()
 
 	var nodes []Node
 	filter := stringset.New()
-	p := cayley.StartPath(g.store, quad.IRI(g.NodeToID(node))).Out().Has(quad.IRI("type"))
+	p := cayley.StartPath(g.db.store, quad.IRI(g.NodeToID(node))).Out().Has(quad.IRI("type"))
 	err := p.Iterate(context.Background()).EachValue(nil, func(value quad.Value) {
-		nstr := valToStr(value)
-
-		if !filter.Has(nstr) {
+		if nstr := valToStr(value); !filter.Has(nstr) {
 			filter.Insert(nstr)
 			nodes = append(nodes, nstr)
 		}
@@ -72,15 +75,15 @@ func (g *CayleyGraph) AllOutNodes(node Node) ([]Node, error) {
 	return nodes, err
 }
 
-// UpsertNode implements the GraphDatabase interface.
-func (g *CayleyGraph) UpsertNode(id, ntype string) (Node, error) {
+// UpsertNode will create a node in the database.
+func (g *Graph) UpsertNode(id, ntype string) (Node, error) {
 	t := graph.NewTransaction()
 
-	if err := g.quadsUpsertNode(t, id, ntype); err != nil {
+	if err := g.db.quadsUpsertNode(t, id, ntype); err != nil {
 		return nil, err
 	}
 
-	return Node(id), g.applyWithLock(t)
+	return Node(id), g.db.applyWithLock(t)
 }
 
 func (g *CayleyGraph) quadsUpsertNode(t *graph.Transaction, id, ntype string) error {
@@ -92,17 +95,17 @@ func (g *CayleyGraph) quadsUpsertNode(t *graph.Transaction, id, ntype string) er
 	return nil
 }
 
-// ReadNode implements the GraphDatabase interface.
-func (g *CayleyGraph) ReadNode(id, ntype string) (Node, error) {
-	g.Lock()
-	defer g.Unlock()
+// ReadNode returns the node matching the id and type arguments.
+func (g *Graph) ReadNode(id, ntype string) (Node, error) {
+	g.db.Lock()
+	defer g.db.Unlock()
 
 	if id == "" || ntype == "" {
 		return nil, fmt.Errorf("%s: ReadNode: Empty required arguments", g.String())
 	}
 
 	// Check that a node with 'id' as a subject already exists
-	if !g.nodeExists(id, ntype) {
+	if !g.db.nodeExists(id, ntype) {
 		return nil, fmt.Errorf("%s: ReadNode: Node %s does not exist", g.String(), id)
 	}
 
@@ -110,24 +113,24 @@ func (g *CayleyGraph) ReadNode(id, ntype string) (Node, error) {
 }
 
 // DeleteNode implements the GraphDatabase interface.
-func (g *CayleyGraph) DeleteNode(node Node) error {
+func (g *Graph) DeleteNode(node Node) error {
 	id := g.NodeToID(node)
 	if id == "" {
 		return fmt.Errorf("%s: DeleteNode: Empty node id provided", g.String())
 	}
 
 	// Check that a node with 'id' as a subject already exists
-	if !g.nodeExists(id, "") {
+	if !g.db.nodeExists(id, "") {
 		return fmt.Errorf("%s: DeleteNode: Node %s does not exist", g.String(), id)
 	}
 
 	t := cayley.NewTransaction()
 	// Build the transaction that will perform the deletion
-	if err := g.quadsDeleteNode(t, id); err != nil {
+	if err := g.db.quadsDeleteNode(t, id); err != nil {
 		return err
 	}
 	// Attempt to perform the deletion transaction
-	return g.applyWithLock(t)
+	return g.db.applyWithLock(t)
 }
 
 func (g *CayleyGraph) quadsDeleteNode(t *graph.Transaction, id string) error {
@@ -146,10 +149,10 @@ func (g *CayleyGraph) quadsDeleteNode(t *graph.Transaction, id string) error {
 	return nil
 }
 
-// WriteNodeQuads replicates nodes from the cg parameter to the receiver CayleyGraph.
-func (g *CayleyGraph) WriteNodeQuads(cg *CayleyGraph, nodes []Node) error {
-	cg.Lock()
-	defer cg.Unlock()
+// WriteNodeQuads replicates nodes from the cg parameter to the receiver Graph.
+func (g *Graph) WriteNodeQuads(cg *Graph, nodes []Node) error {
+	cg.db.Lock()
+	defer cg.db.Unlock()
 
 	var nodeValues []quad.Value
 	for _, node := range nodes {
@@ -157,7 +160,7 @@ func (g *CayleyGraph) WriteNodeQuads(cg *CayleyGraph, nodes []Node) error {
 	}
 
 	var quads []quad.Quad
-	p := cayley.StartPath(cg.store, nodeValues...).Tag("subject").OutWithTags([]string{"predicate"}).Tag("object")
+	p := cayley.StartPath(cg.db.store, nodeValues...).Tag("subject").OutWithTags([]string{"predicate"}).Tag("object")
 	err := p.Iterate(context.TODO()).TagValues(nil, func(m map[string]quad.Value) {
 		var label quad.Value
 		if valToStr(m["predicate"]) == "type" {
@@ -169,7 +172,7 @@ func (g *CayleyGraph) WriteNodeQuads(cg *CayleyGraph, nodes []Node) error {
 		return fmt.Errorf("%s: WriteNodeQuads: Failed to iterate over node tags: %v", g.String(), err)
 	}
 
-	return copyQuads(g, quads)
+	return copyQuads(g.db, quads)
 }
 
 func (g *CayleyGraph) nodeExists(id, ntype string) bool {

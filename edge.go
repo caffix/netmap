@@ -26,8 +26,8 @@ type Edge struct {
 	From, To  Node
 }
 
-// UpsertEdge implements the GraphDatabase interface.
-func (g *CayleyGraph) UpsertEdge(edge *Edge) error {
+// UpsertEdge will create an edge in the database if it does not already exist.
+func (g *Graph) UpsertEdge(edge *Edge) error {
 	t := graph.NewTransaction()
 
 	if edge.Predicate == "" {
@@ -44,10 +44,10 @@ func (g *CayleyGraph) UpsertEdge(edge *Edge) error {
 		return fmt.Errorf("%s: UpsertEdge: Invalid 'to' node", g.String())
 	}
 
-	if err := g.quadsUpsertEdge(t, edge.Predicate, from, to); err != nil {
+	if err := g.db.quadsUpsertEdge(t, edge.Predicate, from, to); err != nil {
 		return err
 	}
-	return g.applyWithLock(t)
+	return g.db.applyWithLock(t)
 }
 
 func (g *CayleyGraph) quadsUpsertEdge(t *graph.Transaction, predicate, from, to string) error {
@@ -68,7 +68,7 @@ func (g *CayleyGraph) quadsUpsertEdge(t *graph.Transaction, predicate, from, to 
 }
 
 // ReadEdges implements the GraphDatabase interface.
-func (g *CayleyGraph) ReadEdges(node Node, predicates ...string) ([]*Edge, error) {
+func (g *Graph) ReadEdges(node Node, predicates ...string) ([]*Edge, error) {
 	var edges []*Edge
 
 	if e, err := g.ReadInEdges(node, predicates...); err == nil {
@@ -87,7 +87,7 @@ func (g *CayleyGraph) ReadEdges(node Node, predicates ...string) ([]*Edge, error
 }
 
 // CountEdges counts the total number of edges to a node.
-func (g *CayleyGraph) CountEdges(node Node, predicates ...string) (int, error) {
+func (g *Graph) CountEdges(node Node, predicates ...string) (int, error) {
 	var count int
 
 	if c, err := g.CountInEdges(node, predicates...); err == nil {
@@ -104,12 +104,12 @@ func (g *CayleyGraph) CountEdges(node Node, predicates ...string) (int, error) {
 }
 
 // ReadInEdges implements the GraphDatabase interface.
-func (g *CayleyGraph) ReadInEdges(node Node, predicates ...string) ([]*Edge, error) {
-	g.Lock()
-	defer g.Unlock()
+func (g *Graph) ReadInEdges(node Node, predicates ...string) ([]*Edge, error) {
+	g.db.Lock()
+	defer g.db.Unlock()
 
 	nstr := g.NodeToID(node)
-	if nstr == "" || !g.nodeExists(nstr, "") {
+	if nstr == "" || !g.db.nodeExists(nstr, "") {
 		return nil, fmt.Errorf("%s: ReadInEdges: Invalid node reference argument", g.String())
 	}
 
@@ -122,7 +122,7 @@ func (g *CayleyGraph) ReadInEdges(node Node, predicates ...string) ([]*Edge, err
 		}
 	}
 
-	p := cayley.StartPath(g.store, quad.IRI(nstr))
+	p := cayley.StartPath(g.db.store, quad.IRI(nstr))
 	if len(predicates) == 0 {
 		p = p.InWithTags([]string{"predicate"})
 	} else {
@@ -146,16 +146,16 @@ func (g *CayleyGraph) ReadInEdges(node Node, predicates ...string) ([]*Edge, err
 }
 
 // CountInEdges implements the GraphDatabase interface.
-func (g *CayleyGraph) CountInEdges(node Node, predicates ...string) (int, error) {
-	g.Lock()
-	defer g.Unlock()
+func (g *Graph) CountInEdges(node Node, predicates ...string) (int, error) {
+	g.db.Lock()
+	defer g.db.Unlock()
 
 	nstr := g.NodeToID(node)
-	if nstr == "" || !g.nodeExists(nstr, "") {
+	if nstr == "" || !g.db.nodeExists(nstr, "") {
 		return 0, fmt.Errorf("%s: CountInEdges: Invalid node reference argument", g.String())
 	}
 
-	p := cayley.StartPath(g.store, quad.IRI(nstr))
+	p := cayley.StartPath(g.db.store, quad.IRI(nstr))
 	if len(predicates) == 0 {
 		p = p.In()
 	} else {
@@ -168,12 +168,12 @@ func (g *CayleyGraph) CountInEdges(node Node, predicates ...string) (int, error)
 }
 
 // ReadOutEdges implements the GraphDatabase interface.
-func (g *CayleyGraph) ReadOutEdges(node Node, predicates ...string) ([]*Edge, error) {
-	g.Lock()
-	defer g.Unlock()
+func (g *Graph) ReadOutEdges(node Node, predicates ...string) ([]*Edge, error) {
+	g.db.Lock()
+	defer g.db.Unlock()
 
 	nstr := g.NodeToID(node)
-	if nstr == "" || !g.nodeExists(nstr, "") {
+	if nstr == "" || !g.db.nodeExists(nstr, "") {
 		return nil, fmt.Errorf("%s: ReadOutEdges: Invalid node reference argument", g.String())
 	}
 
@@ -186,7 +186,7 @@ func (g *CayleyGraph) ReadOutEdges(node Node, predicates ...string) ([]*Edge, er
 		}
 	}
 
-	p := cayley.StartPath(g.store, quad.IRI(nstr))
+	p := cayley.StartPath(g.db.store, quad.IRI(nstr))
 	if len(predicates) == 0 {
 		p = p.OutWithTags([]string{"predicate"})
 	} else {
@@ -210,16 +210,16 @@ func (g *CayleyGraph) ReadOutEdges(node Node, predicates ...string) ([]*Edge, er
 }
 
 // CountOutEdges implements the GraphDatabase interface.
-func (g *CayleyGraph) CountOutEdges(node Node, predicates ...string) (int, error) {
-	g.Lock()
-	defer g.Unlock()
+func (g *Graph) CountOutEdges(node Node, predicates ...string) (int, error) {
+	g.db.Lock()
+	defer g.db.Unlock()
 
 	nstr := g.NodeToID(node)
-	if nstr == "" || !g.nodeExists(nstr, "") {
+	if nstr == "" || !g.db.nodeExists(nstr, "") {
 		return 0, fmt.Errorf("%s: CountOutEdges: Invalid node reference argument", g.String())
 	}
 
-	p := cayley.StartPath(g.store, quad.IRI(nstr))
+	p := cayley.StartPath(g.db.store, quad.IRI(nstr))
 	if len(predicates) == 0 {
 		p = p.Out()
 	} else {
@@ -232,9 +232,9 @@ func (g *CayleyGraph) CountOutEdges(node Node, predicates ...string) (int, error
 }
 
 // DeleteEdge implements the GraphDatabase interface.
-func (g *CayleyGraph) DeleteEdge(edge *Edge) error {
-	g.Lock()
-	defer g.Unlock()
+func (g *Graph) DeleteEdge(edge *Edge) error {
+	g.db.Lock()
+	defer g.db.Unlock()
 
 	from := g.NodeToID(edge.From)
 	to := g.NodeToID(edge.To)
@@ -242,5 +242,5 @@ func (g *CayleyGraph) DeleteEdge(edge *Edge) error {
 		return fmt.Errorf("%s: DeleteEdge: Invalid edge reference argument", g.String())
 	}
 
-	return g.store.RemoveQuad(quad.MakeIRI(from, edge.Predicate, to, ""))
+	return g.db.store.RemoveQuad(quad.MakeIRI(from, edge.Predicate, to, ""))
 }

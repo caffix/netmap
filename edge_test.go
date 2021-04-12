@@ -12,7 +12,9 @@ import (
 )
 
 func TestInsertEdge(t *testing.T) {
-	g := NewCayleyGraphMemory()
+	cay := NewCayleyGraphMemory()
+	g := NewGraph(cay)
+	defer g.Close()
 
 	bob := "Bob"
 	alice := "Alice"
@@ -47,7 +49,7 @@ func TestInsertEdge(t *testing.T) {
 	}
 	for i, test := range testArgs {
 		if i == len(testArgs)-1 {
-			_ = g.store.AddQuad(quad.Make(vBob, vType, "Person", nil))
+			_ = g.db.store.AddQuad(quad.Make(vBob, vType, "Person", nil))
 		}
 		err := g.UpsertEdge(&Edge{
 			Predicate: test.Predicate,
@@ -59,7 +61,7 @@ func TestInsertEdge(t *testing.T) {
 		}
 	}
 
-	if err := g.store.AddQuad(quad.Make(vAlice, vType, "Person", nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vAlice, vType, "Person", nil)); err != nil {
 		t.Errorf("Failed to add the quad: %v", err)
 	}
 
@@ -73,7 +75,7 @@ func TestInsertEdge(t *testing.T) {
 	}
 
 	// Check if the edge was successfully inserted
-	p := cayley.StartPath(g.store, vBob).Out(quad.IRI("knows")).Is(vAlice)
+	p := cayley.StartPath(g.db.store, vBob).Out(quad.IRI("knows")).Is(vAlice)
 	if first, err := p.Iterate(context.Background()).FirstValue(nil); err != nil || first == nil {
 		t.Errorf("UpsertEdge failed to insert the quad for the edge")
 	}
@@ -89,7 +91,9 @@ func TestInsertEdge(t *testing.T) {
 }
 
 func TestReadEdges(t *testing.T) {
-	g := NewCayleyGraphMemory()
+	cay := NewCayleyGraphMemory()
+	g := NewGraph(cay)
+	defer g.Close()
 
 	if _, err := g.ReadEdges(""); err == nil {
 		t.Errorf("ReadEdges returned no error when provided an empty node argument")
@@ -101,7 +105,7 @@ func TestReadEdges(t *testing.T) {
 	vBob := quad.IRI("Bob")
 	vType := quad.IRI("type")
 	// setup the initial data in the graph
-	if err := g.store.AddQuad(quad.Make(vBob, vType, "Person", nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vBob, vType, "Person", nil)); err != nil {
 		t.Errorf("Failed to add the Bob quad: %v", err)
 	}
 
@@ -110,10 +114,10 @@ func TestReadEdges(t *testing.T) {
 	}
 
 	vAlice := quad.IRI("Alice")
-	if err := g.store.AddQuad(quad.Make(vAlice, vType, "Person", nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vAlice, vType, "Person", nil)); err != nil {
 		t.Errorf("Failed to add the Alice quad: %v", err)
 	}
-	if err := g.store.AddQuad(quad.Make(vBob, quad.IRI("knows"), vAlice, nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vBob, quad.IRI("knows"), vAlice, nil)); err != nil {
 		t.Errorf("Failed to add the Bob knows Alice quad: %v", err)
 	}
 
@@ -123,7 +127,7 @@ func TestReadEdges(t *testing.T) {
 		t.Errorf("ReadEdges returned the wrong edges: %v", edges)
 	}
 
-	if err := g.store.AddQuad(quad.Make(vAlice, quad.IRI("knows"), vBob, nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vAlice, quad.IRI("knows"), vBob, nil)); err != nil {
 		t.Errorf("Failed to add the Alice knows Bob quad: %v", err)
 	}
 
@@ -136,7 +140,7 @@ func TestReadEdges(t *testing.T) {
 	if _, err := g.ReadEdges("Bob", "likes"); err == nil {
 		t.Errorf("ReadEdges returned no error when the node does not have edges with matching predicates: %v", err)
 	}
-	if err := g.store.AddQuad(quad.Make(vBob, quad.IRI("likes"), vAlice, nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vBob, quad.IRI("likes"), vAlice, nil)); err != nil {
 		t.Errorf("Failed to add the Bob likes Alice quad: %v", err)
 	}
 
@@ -148,7 +152,9 @@ func TestReadEdges(t *testing.T) {
 }
 
 func TestCountEdges(t *testing.T) {
-	g := NewCayleyGraphMemory()
+	cay := NewCayleyGraphMemory()
+	g := NewGraph(cay)
+	defer g.Close()
 
 	if count, err := g.CountEdges(""); err == nil {
 		t.Errorf("CountEdges returned no error when provided an empty node argument")
@@ -169,7 +175,7 @@ func TestCountEdges(t *testing.T) {
 	vBob := quad.IRI("Bob")
 	vType := quad.IRI("type")
 	// setup the initial data in the graph
-	if err := g.store.AddQuad(quad.Make(vBob, vType, "Person", nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vBob, vType, "Person", nil)); err != nil {
 		t.Errorf("Failed to add the Bob quad: %v", err)
 	}
 
@@ -180,10 +186,10 @@ func TestCountEdges(t *testing.T) {
 	}
 
 	vAlice := quad.IRI("Alice")
-	if err := g.store.AddQuad(quad.Make(vAlice, vType, "Person", nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vAlice, vType, "Person", nil)); err != nil {
 		t.Errorf("Failed to add the Alice quad: %v", err)
 	}
-	if err := g.store.AddQuad(quad.Make(vBob, quad.IRI("knows"), vAlice, nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vBob, quad.IRI("knows"), vAlice, nil)); err != nil {
 		t.Errorf("Failed to add the Bob knows Alice quad: %v", err)
 	}
 
@@ -193,7 +199,7 @@ func TestCountEdges(t *testing.T) {
 		t.Errorf("CountEdges returned the wrong count value: %d", count)
 	}
 
-	if err := g.store.AddQuad(quad.Make(vAlice, quad.IRI("knows"), vBob, nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vAlice, quad.IRI("knows"), vBob, nil)); err != nil {
 		t.Errorf("Failed to add the Alice knows Bob quad: %v", err)
 	}
 
@@ -209,7 +215,7 @@ func TestCountEdges(t *testing.T) {
 		t.Errorf("CountEdges returned the wrong count value when the node does not have edges with matching predicates: %d", count)
 	}
 
-	if err := g.store.AddQuad(quad.Make(vBob, quad.IRI("likes"), vAlice, nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vBob, quad.IRI("likes"), vAlice, nil)); err != nil {
 		t.Errorf("Failed to add the Bob likes Alice quad: %v", err)
 	}
 
@@ -221,7 +227,9 @@ func TestCountEdges(t *testing.T) {
 }
 
 func TestDeleteEdge(t *testing.T) {
-	g := NewCayleyGraphMemory()
+	cay := NewCayleyGraphMemory()
+	g := NewGraph(cay)
+	defer g.Close()
 
 	bob := "Bob"
 	alice := "Alice"
@@ -255,7 +263,7 @@ func TestDeleteEdge(t *testing.T) {
 	}
 	for i, test := range testArgs {
 		if i == len(testArgs)-1 {
-			if err := g.store.AddQuad(quad.Make(vBob, vType, "Person", nil)); err != nil {
+			if err := g.db.store.AddQuad(quad.Make(vBob, vType, "Person", nil)); err != nil {
 				t.Errorf("Failed to add the Bob quad: %v", err)
 			}
 		}
@@ -270,11 +278,11 @@ func TestDeleteEdge(t *testing.T) {
 	}
 
 	vAlice := quad.IRI(alice)
-	if err := g.store.AddQuad(quad.Make(vAlice, vType, "Person", nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vAlice, vType, "Person", nil)); err != nil {
 		t.Errorf("Failed to add the Alice quad: %v", err)
 	}
 
-	if err := g.store.AddQuad(quad.Make(vBob, quad.IRI("knows"), vAlice, nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vBob, quad.IRI("knows"), vAlice, nil)); err != nil {
 		t.Errorf("Failed to add the Bob knows Alice quad: %v", err)
 	}
 
@@ -288,7 +296,7 @@ func TestDeleteEdge(t *testing.T) {
 	}
 
 	// Check if the edge was actually removed
-	p := cayley.StartPath(g.store, vBob).Out(quad.IRI("knows")).Is(vAlice)
+	p := cayley.StartPath(g.db.store, vBob).Out(quad.IRI("knows")).Is(vAlice)
 	if first, err := p.Iterate(context.Background()).FirstValue(nil); err == nil && first != nil {
 		t.Errorf("DeleteEdge failed to remove the edge")
 	}

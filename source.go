@@ -22,20 +22,20 @@ var notDataSourceSet = stringset.New("tld", "root", "domain",
 func (g *Graph) UpsertSource(source string) (Node, error) {
 	t := graph.NewTransaction()
 
-	if err := g.quadsUpsertSource(t, source); err != nil {
+	if err := g.db.quadsUpsertSource(t, source); err != nil {
 		return nil, err
 	}
 
 	return Node(source), g.db.applyWithLock(t)
 }
 
-func (g *Graph) quadsUpsertSource(t *graph.Transaction, source string) error {
-	return g.db.quadsUpsertNode(t, source, TypeSource)
+func (g *CayleyGraph) quadsUpsertSource(t *graph.Transaction, source string) error {
+	return g.quadsUpsertNode(t, source, TypeSource)
 }
 
 // NodeSources returns the names of data sources that identified the Node parameter during the events.
 func (g *Graph) NodeSources(node Node, events ...string) ([]string, error) {
-	nstr := g.db.NodeToID(node)
+	nstr := g.NodeToID(node)
 	if nstr == "" {
 		return nil, fmt.Errorf("%s: NodeSources: Invalid node reference argument", g.String())
 	}
@@ -47,12 +47,12 @@ func (g *Graph) NodeSources(node Node, events ...string) ([]string, error) {
 
 	eventset := stringset.New()
 	for _, event := range allevents {
-		if estr := g.db.NodeToID(event); estr != "" {
+		if estr := g.NodeToID(event); estr != "" {
 			eventset.Insert(estr)
 		}
 	}
 
-	edges, err := g.db.ReadInEdges(node)
+	edges, err := g.ReadInEdges(node)
 	if err != nil {
 		return nil, fmt.Errorf("%s: NodeSources: Failed to obtain the list of in-edges: %v", g.String(), err)
 	}
@@ -64,7 +64,7 @@ func (g *Graph) NodeSources(node Node, events ...string) ([]string, error) {
 			continue
 		}
 
-		if name := g.db.NodeToID(edge.From); eventset.Has(name) && !filter.Has(edge.Predicate) {
+		if name := g.NodeToID(edge.From); eventset.Has(name) && !filter.Has(edge.Predicate) {
 			filter.Insert(edge.Predicate)
 			sources = append(sources, edge.Predicate)
 		}
@@ -81,13 +81,13 @@ func (g *Graph) NodeSources(node Node, events ...string) ([]string, error) {
 func (g *Graph) GetSourceData(source, query string, ttl int) (string, error) {
 	var edges []*Edge
 
-	if node, err := g.db.ReadNode(source, "source"); err == nil {
-		edges, _ = g.db.ReadOutEdges(node, query)
+	if node, err := g.ReadNode(source, "source"); err == nil {
+		edges, _ = g.ReadOutEdges(node, query)
 	}
 
 	var data string
 	for _, edge := range edges {
-		if p, err := g.db.ReadProperties(edge.To, "timestamp"); err == nil && len(p) > 0 {
+		if p, err := g.ReadProperties(edge.To, "timestamp"); err == nil && len(p) > 0 {
 			if n := p[0].Value.Native(); n != nil {
 				d := time.Duration(ttl) * time.Minute
 
@@ -97,7 +97,7 @@ func (g *Graph) GetSourceData(source, query string, ttl int) (string, error) {
 			}
 		}
 
-		if p, err := g.db.ReadProperties(edge.To, "response"); err == nil && len(p) > 0 {
+		if p, err := g.ReadProperties(edge.To, "response"); err == nil && len(p) > 0 {
 			data = valToStr(p[0].Value)
 			break
 		}
@@ -114,7 +114,7 @@ func (g *Graph) GetSourceData(source, query string, ttl int) (string, error) {
 func (g *Graph) CacheSourceData(source, query, resp string) error {
 	t := graph.NewTransaction()
 
-	if err := g.quadsUpsertSource(t, source); err != nil {
+	if err := g.db.quadsUpsertSource(t, source); err != nil {
 		return err
 	}
 	// Remove previously cached responses for the same query
@@ -143,14 +143,14 @@ func (g *Graph) CacheSourceData(source, query, resp string) error {
 func (g *Graph) deleteCachedData(source, query string) error {
 	var edges []*Edge
 
-	if node, err := g.db.ReadNode(source, "source"); err == nil {
-		edges, _ = g.db.ReadOutEdges(node, query)
+	if node, err := g.ReadNode(source, "source"); err == nil {
+		edges, _ = g.ReadOutEdges(node, query)
 	}
 
 	t := graph.NewTransaction()
 	for _, edge := range edges {
-		if err := g.db.quadsDeleteNode(t, g.db.NodeToID(edge.To)); err == nil {
-			t.RemoveQuad(quad.MakeIRI(g.db.NodeToID(edge.From), edge.Predicate, g.db.NodeToID(edge.To), ""))
+		if err := g.db.quadsDeleteNode(t, g.NodeToID(edge.To)); err == nil {
+			t.RemoveQuad(quad.MakeIRI(g.NodeToID(edge.From), edge.Predicate, g.NodeToID(edge.To), ""))
 		}
 	}
 	return g.db.applyWithLock(t)

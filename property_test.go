@@ -13,7 +13,9 @@ import (
 )
 
 func TestUpsertProperty(t *testing.T) {
-	g := NewCayleyGraphMemory()
+	cay := NewCayleyGraphMemory()
+	g := NewGraph(cay)
+	defer g.Close()
 
 	if err := g.UpsertProperty("", "like", "coffee"); err == nil {
 		t.Errorf("UpsertProperty returned no error when provided an empty node argument")
@@ -26,7 +28,7 @@ func TestUpsertProperty(t *testing.T) {
 	vBob := quad.IRI("Bob")
 	vType := quad.IRI("type")
 	// setup the initial data in the graph
-	if err := g.store.AddQuad(quad.Make(vBob, vType, "Person", nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vBob, vType, "Person", nil)); err != nil {
 		t.Errorf("Failed to add the bob quad")
 	}
 
@@ -38,7 +40,7 @@ func TestUpsertProperty(t *testing.T) {
 		t.Errorf("UpsertProperty returned an error when provided a valid node and property arguments")
 	}
 
-	p := cayley.StartPath(g.store, vBob).Has(quad.IRI("likes"), quad.String("coffee"))
+	p := cayley.StartPath(g.db.store, vBob).Has(quad.IRI("likes"), quad.String("coffee"))
 	if first, err := p.Iterate(context.Background()).FirstValue(nil); err != nil || first == nil {
 		t.Errorf("UpsertProperty failed to enter the property for the node")
 	}
@@ -50,7 +52,9 @@ func TestUpsertProperty(t *testing.T) {
 }
 
 func TestReadProperties(t *testing.T) {
-	g := NewCayleyGraphMemory()
+	cay := NewCayleyGraphMemory()
+	g := NewGraph(cay)
+	defer g.Close()
 
 	if _, err := g.ReadProperties("", "likes"); err == nil {
 		t.Errorf("ReadProperties returned no error when provided an empty node argument")
@@ -63,7 +67,7 @@ func TestReadProperties(t *testing.T) {
 	vBob := quad.IRI("Bob")
 	vType := quad.IRI("type")
 	// setup the initial data in the graph
-	if err := g.store.AddQuad(quad.Make(vBob, vType, "Person", nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vBob, vType, "Person", nil)); err != nil {
 		t.Errorf("Failed to add the bob quad")
 	}
 
@@ -84,10 +88,10 @@ func TestReadProperties(t *testing.T) {
 	}
 
 	vLikes := quad.IRI("likes")
-	if err := g.store.AddQuad(quad.Make(vBob, vLikes, "coffee", nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vBob, vLikes, "coffee", nil)); err != nil {
 		t.Errorf("Failed to add the bob likes coffee quad")
 	}
-	if err := g.store.AddQuad(quad.Make(vBob, vLikes, "Go", nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vBob, vLikes, "Go", nil)); err != nil {
 		t.Errorf("Failed to add the bob likes Go quad")
 	}
 
@@ -125,7 +129,9 @@ func TestReadProperties(t *testing.T) {
 }
 
 func TestCountProperties(t *testing.T) {
-	g := NewCayleyGraphMemory()
+	cay := NewCayleyGraphMemory()
+	g := NewGraph(cay)
+	defer g.Close()
 
 	if _, err := g.CountProperties("", "likes"); err == nil {
 		t.Errorf("CountProperties returned no error when provided an empty node argument")
@@ -138,7 +144,7 @@ func TestCountProperties(t *testing.T) {
 	vBob := quad.IRI("Bob")
 	vType := quad.IRI("type")
 	// setup the initial data in the graph
-	if err := g.store.AddQuad(quad.Make(vBob, vType, "Person", nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vBob, vType, "Person", nil)); err != nil {
 		t.Errorf("Failed to add the bob quad")
 	}
 
@@ -149,10 +155,10 @@ func TestCountProperties(t *testing.T) {
 	}
 
 	vLikes := quad.IRI("likes")
-	if err := g.store.AddQuad(quad.Make(vBob, vLikes, "coffee", nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vBob, vLikes, "coffee", nil)); err != nil {
 		t.Errorf("Failed to add the bob likes coffee quad")
 	}
-	if err := g.store.AddQuad(quad.Make(vBob, vLikes, "Go", nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vBob, vLikes, "Go", nil)); err != nil {
 		t.Errorf("Failed to add the bob likes Go quad")
 	}
 
@@ -170,7 +176,9 @@ func TestCountProperties(t *testing.T) {
 }
 
 func TestDeleteProperty(t *testing.T) {
-	g := NewCayleyGraphMemory()
+	cay := NewCayleyGraphMemory()
+	g := NewGraph(cay)
+	defer g.Close()
 
 	if err := g.DeleteProperty("", "likes", "coffee"); err == nil {
 		t.Errorf("DeleteProperty returned no error when provided an empty node argument")
@@ -184,10 +192,10 @@ func TestDeleteProperty(t *testing.T) {
 	vType := quad.IRI("type")
 	vLikes := quad.IRI("likes")
 	// setup the initial data in the graph
-	if err := g.store.AddQuad(quad.Make(vBob, vType, "Person", nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vBob, vType, "Person", nil)); err != nil {
 		t.Errorf("Failed to add the bob quad")
 	}
-	if err := g.store.AddQuad(quad.Make(vBob, vLikes, "coffee", nil)); err != nil {
+	if err := g.db.store.AddQuad(quad.Make(vBob, vLikes, "coffee", nil)); err != nil {
 		t.Errorf("Failed to add the bob likes coffee quad")
 	}
 
@@ -195,7 +203,7 @@ func TestDeleteProperty(t *testing.T) {
 		t.Errorf("DeleteProperty returned an error when provided a valid node and property arguments")
 	}
 
-	p := cayley.StartPath(g.store, vBob).Has(quad.IRI("likes"), quad.String("coffee"))
+	p := cayley.StartPath(g.db.store, vBob).Has(quad.IRI("likes"), quad.String("coffee"))
 	if first, err := p.Iterate(context.Background()).FirstValue(nil); err == nil && first != nil {
 		t.Errorf("DeleteProperty failed to delete the property from the node")
 	}
