@@ -77,14 +77,35 @@ func (g *Graph) NamesToAddrs(uuid string, names ...string) ([]*NameAddrPair, err
 		nodes = eventNode.Out().Has(ntype, fqdn).Unique().Tag("name")
 	}
 
+	set := stringset.New()
+	if err := nodes.Iterate(context.Background()).EachValue(g.db.store.QuadStore, func(v quad.Value) {
+		set.Insert(valToStr(v))
+	}); err != nil {
+		return nil, fmt.Errorf("%s: NamesToAddrs: Failed to iterate over node values: %v", g.String(), err)
+	}
+
 	f := addrsCallback(filter, nameAddrMap)
 	// Obtain the addresses that are associated with the event and adjacent names
 	adj := nodes.Out(arec, aaaarec).Has(ntype, quad.StringToValue(TypeAddr)).Tag("address").In().And(eventNode).Back("name")
 	if err := adj.Iterate(context.Background()).TagValues(nil, f); err != nil {
 		return nil, fmt.Errorf("%s: NamesToAddrs: Failed to iterate over tag values: %v", g.String(), err)
 	}
-	// Get all the nodes for services names and CNAMES
-	getSRVsAndCNAMEs(eventNode, nodes, f)
+
+	for k := range nameAddrMap {
+		set.Remove(k)
+	}
+
+	if set.Len() > 0 {
+		var nameVals []quad.Value
+
+		for _, name := range set.Slice() {
+			nameVals = append(nameVals, quad.IRI(name))
+		}
+
+		nodes = cayley.StartPath(g.db.store, nameVals...).Tag("name")
+		// Get all the nodes for services names and CNAMES
+		getSRVsAndCNAMEs(eventNode, nodes, f)
+	}
 
 	pairs := generatePairsFromAddrMap(nameAddrMap)
 	if len(pairs) == 0 {
