@@ -153,12 +153,18 @@ func (g *Graph) EventFQDNs(uuid string) []string {
 	g.db.Lock()
 	defer g.db.Unlock()
 
-	var names []string
-	p := cayley.StartPath(g.db.store, quad.IRI(uuid)).Out().LabelContext(quad.IRI(TypeFQDN)).Unique()
+	names := stringset.New()
+	p := cayley.StartPath(g.db.store, quad.IRI(uuid)).Out(quad.IRI("domain"))
 	_ = p.Iterate(context.Background()).EachValue(nil, func(value quad.Value) {
-		names = append(names, valToStr(value))
+		names.Insert(valToStr(value))
 	})
-	return names
+
+	p = p.In(quad.IRI("root"))
+	_ = p.Iterate(context.Background()).EachValue(nil, func(value quad.Value) {
+		names.Insert(valToStr(value))
+	})
+
+	return names.Slice()
 }
 
 // EventDomains returns the domains that were involved in the event.

@@ -74,7 +74,11 @@ func (g *Graph) NamesToAddrs(uuid string, names ...string) ([]*NameAddrPair, err
 	if len(names) > 0 {
 		nodes = cayley.StartPath(g.db.store, nameVals...).Tag("name")
 	} else {
-		nodes = eventNode.Out().Has(ntype, fqdn).Unique().Tag("name")
+		d := quad.IRI("domain")
+		r := quad.IRI("root")
+
+		domains := eventNode.Out(d).Has(ntype, fqdn).Unique()
+		nodes = domains.In(r).Or(domains).Unique().Tag("name")
 	}
 
 	set := stringset.New()
@@ -96,15 +100,15 @@ func (g *Graph) NamesToAddrs(uuid string, names ...string) ([]*NameAddrPair, err
 	}
 
 	if set.Len() > 0 {
-		var nameVals []quad.Value
+		var vals []quad.Value
 
-		for _, name := range set.Slice() {
-			nameVals = append(nameVals, quad.IRI(name))
+		for name := range set {
+			vals = append(vals, quad.IRI(name))
 		}
 
-		nodes = cayley.StartPath(g.db.store, nameVals...).Tag("name")
+		p := cayley.StartPath(g.db.store, vals...).Tag("name")
 		// Get all the nodes for services names and CNAMES
-		getSRVsAndCNAMEs(eventNode, nodes, f)
+		getSRVsAndCNAMEs(eventNode, p, f)
 	}
 
 	pairs := generatePairsFromAddrMap(nameAddrMap)

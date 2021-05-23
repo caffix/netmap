@@ -72,8 +72,9 @@ func TestEvent(t *testing.T) {
 			var found bool
 
 			for _, fqdn := range g.EventFQDNs(tt.EventID) {
-				if fqdn != tt.FQDN {
+				if fqdn == tt.FQDN {
 					found = true
+					break
 				}
 			}
 
