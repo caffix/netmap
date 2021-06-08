@@ -20,17 +20,19 @@ type Property struct {
 
 // UpsertProperty implements the GraphDatabase interface.
 func (g *Graph) UpsertProperty(node Node, predicate, value string) error {
-	t := graph.NewTransaction()
+	g.db.Lock()
+	defer g.db.Unlock()
 
 	id := g.NodeToID(node)
 	if !g.db.nodeExists(id, "") {
 		return fmt.Errorf("%s: UpsertProperty: Invalid node reference argument", g.String())
 	}
 
+	t := graph.NewTransaction()
 	if err := g.db.quadsUpsertProperty(t, id, predicate, value); err != nil {
 		return err
 	}
-	return g.db.applyWithLock(t)
+	return g.db.store.ApplyTransaction(t)
 }
 
 func (g *CayleyGraph) quadsUpsertProperty(t *graph.Transaction, id, predicate string, value interface{}) error {

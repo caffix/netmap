@@ -114,6 +114,9 @@ func (g *Graph) ReadNode(id, ntype string) (Node, error) {
 
 // DeleteNode implements the GraphDatabase interface.
 func (g *Graph) DeleteNode(node Node) error {
+	g.db.Lock()
+	defer g.db.Unlock()
+
 	id := g.NodeToID(node)
 	if id == "" {
 		return fmt.Errorf("%s: DeleteNode: Empty node id provided", g.String())
@@ -130,13 +133,10 @@ func (g *Graph) DeleteNode(node Node) error {
 		return err
 	}
 	// Attempt to perform the deletion transaction
-	return g.db.applyWithLock(t)
+	return g.db.store.ApplyTransaction(t)
 }
 
 func (g *CayleyGraph) quadsDeleteNode(t *graph.Transaction, id string) error {
-	g.Lock()
-	defer g.Unlock()
-
 	p := cayley.StartPath(g.store, quad.IRI(id)).Tag(
 		"subject").BothWithTags([]string{"predicate"}).Tag("object")
 	err := p.Iterate(context.TODO()).TagValues(nil, func(m map[string]quad.Value) {

@@ -147,11 +147,14 @@ func (g *Graph) deleteCachedData(source, query string) error {
 		edges, _ = g.ReadOutEdges(node, query)
 	}
 
+	g.db.Lock()
+	defer g.db.Unlock()
+
 	t := graph.NewTransaction()
 	for _, edge := range edges {
 		if err := g.db.quadsDeleteNode(t, g.NodeToID(edge.To)); err == nil {
 			t.RemoveQuad(quad.MakeIRI(g.NodeToID(edge.From), edge.Predicate, g.NodeToID(edge.To), ""))
 		}
 	}
-	return g.db.applyWithLock(t)
+	return g.db.store.ApplyTransaction(t)
 }
