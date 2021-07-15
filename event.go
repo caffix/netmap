@@ -119,8 +119,7 @@ func (g *Graph) EventsInScope(d ...string) []string {
 	}
 
 	var events []string
-	p := cayley.StartPath(g.db.store, domains...).In(quad.IRI("domain"))
-	p.LabelContext(quad.IRI(TypeEvent)).Unique()
+	p := cayley.StartPath(g.db.store, domains...).In(quad.IRI("domain")).Unique()
 	_ = p.Iterate(context.Background()).EachValue(nil, func(value quad.Value) {
 		events = append(events, valToStr(value))
 	})
@@ -150,19 +149,14 @@ func (g *Graph) EventList() []string {
 
 // EventFQDNs returns the domains that were involved in the event.
 func (g *Graph) EventFQDNs(uuid string) []string {
-	g.db.Lock()
-	defer g.db.Unlock()
-
 	names := stringset.New()
-	p := cayley.StartPath(g.db.store, quad.IRI(uuid)).Out(quad.IRI("domain"))
-	_ = p.Iterate(context.Background()).EachValue(nil, func(value quad.Value) {
-		names.Insert(valToStr(value))
-	})
 
-	p = p.In(quad.IRI("root"))
-	_ = p.Iterate(context.Background()).EachValue(nil, func(value quad.Value) {
-		names.Insert(valToStr(value))
-	})
+	if domains := g.EventDomains(uuid); domains != nil {
+		names.InsertMany(domains...)
+	}
+	if subs := g.EventSubdomains(uuid); subs != nil {
+		names.InsertMany(subs...)
+	}
 
 	return names.Slice()
 }
