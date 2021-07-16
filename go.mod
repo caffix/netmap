@@ -18,6 +18,7 @@ require (
 	github.com/hidal-go/hidalgo v0.0.0-20201109092204-05749a6d73df // indirect
 	github.com/karrick/godirwalk v1.16.1 // indirect
 	github.com/lib/pq v1.10.2 // indirect
+	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/common v0.29.0 // indirect
 	github.com/prometheus/procfs v0.7.0 // indirect
