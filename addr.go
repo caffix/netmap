@@ -107,7 +107,7 @@ func (g *Graph) NamesToAddrs(uuid string, names ...string) ([]*NameAddrPair, err
 		}
 
 		p := cayley.StartPath(g.db.store, vals...).Tag("name")
-		// Get all the nodes for services names and CNAMES
+		// Get all the nodes for service names and CNAMES
 		getSRVsAndCNAMEs(eventNode, p, f)
 	}
 
@@ -143,6 +143,11 @@ func getSRVsAndCNAMEs(event, nodes *cayley.Path, f func(m map[string]quad.Value)
 		} else {
 			p = p.Out(cname)
 		}
+
+		if count, err := p.Iterate(context.Background()).Count(); err != nil || count == 0 {
+			break
+		}
+
 		addrs := p.Out(arec, aaaarec).Has(ntype, quad.StringToValue(TypeAddr)).Tag("address").In().And(event).Back("name")
 		if err := addrs.Iterate(context.Background()).TagValues(nil, f); err != nil {
 			break
