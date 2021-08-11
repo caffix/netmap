@@ -16,7 +16,7 @@ import (
 const TypeAddr string = "ipaddr"
 
 // UpsertAddress creates an IP address in the graph and associates it with a source and event.
-func (g *Graph) UpsertAddress(addr, source, eventID string) (Node, error) {
+func (g *Graph) UpsertAddress(ctx context.Context, addr, source, eventID string) (Node, error) {
 	t := graph.NewTransaction()
 
 	if err := g.quadsUpsertAddress(t, addr, source, eventID); err != nil {
@@ -52,7 +52,7 @@ var (
 )
 
 // NamesToAddrs returns a NameAddrPair for each name / address combination discovered in the graph.
-func (g *Graph) NamesToAddrs(uuid string, names ...string) ([]*NameAddrPair, error) {
+func (g *Graph) NamesToAddrs(ctx context.Context, uuid string, names ...string) ([]*NameAddrPair, error) {
 	g.db.Lock()
 	defer g.db.Unlock()
 
@@ -82,7 +82,7 @@ func (g *Graph) NamesToAddrs(uuid string, names ...string) ([]*NameAddrPair, err
 	}
 
 	set := stringset.New()
-	if err := nodes.Iterate(context.Background()).EachValue(g.db.store.QuadStore, func(v quad.Value) {
+	if err := nodes.Iterate(ctx).EachValue(g.db.store.QuadStore, func(v quad.Value) {
 		set.Insert(valToStr(v))
 	}); err != nil {
 		return nil, fmt.Errorf("%s: NamesToAddrs: Failed to iterate over node values: %v", g.String(), err)
@@ -91,7 +91,7 @@ func (g *Graph) NamesToAddrs(uuid string, names ...string) ([]*NameAddrPair, err
 	f := addrsCallback(filter, nameAddrMap)
 	// Obtain the addresses that are associated with the event and adjacent names
 	adj := nodes.Out(arec, aaaarec).Has(ntype, quad.StringToValue(TypeAddr)).Tag("address").In().And(eventNode).Back("name")
-	if err := adj.Iterate(context.Background()).TagValues(nil, f); err != nil {
+	if err := adj.Iterate(ctx).TagValues(nil, f); err != nil {
 		return nil, fmt.Errorf("%s: NamesToAddrs: Failed to iterate over tag values: %v", g.String(), err)
 	}
 
@@ -108,7 +108,7 @@ func (g *Graph) NamesToAddrs(uuid string, names ...string) ([]*NameAddrPair, err
 
 		p := cayley.StartPath(g.db.store, vals...).Tag("name")
 		// Get all the nodes for service names and CNAMES
-		getSRVsAndCNAMEs(eventNode, p, f)
+		getSRVsAndCNAMEs(ctx, eventNode, p, f)
 	}
 
 	pairs := generatePairsFromAddrMap(nameAddrMap)
@@ -134,7 +134,7 @@ func addrsCallback(filter stringset.Set, addrMap map[string]stringset.Set) func(
 	}
 }
 
-func getSRVsAndCNAMEs(event, nodes *cayley.Path, f func(m map[string]quad.Value)) {
+func getSRVsAndCNAMEs(ctx context.Context, event, nodes *cayley.Path, f func(m map[string]quad.Value)) {
 	p := nodes
 
 	for i := 1; i <= 10; i++ {
@@ -144,12 +144,12 @@ func getSRVsAndCNAMEs(event, nodes *cayley.Path, f func(m map[string]quad.Value)
 			p = p.Out(cname)
 		}
 
-		if count, err := p.Iterate(context.Background()).Count(); err != nil || count == 0 {
+		if count, err := p.Iterate(ctx).Count(); err != nil || count == 0 {
 			break
 		}
 
 		addrs := p.Out(arec, aaaarec).Has(ntype, quad.StringToValue(TypeAddr)).Tag("address").In().And(event).Back("name")
-		if err := addrs.Iterate(context.Background()).TagValues(nil, f); err != nil {
+		if err := addrs.Iterate(ctx).TagValues(nil, f); err != nil {
 			break
 		}
 	}
@@ -171,12 +171,12 @@ func generatePairsFromAddrMap(addrMap map[string]stringset.Set) []*NameAddrPair 
 }
 
 // UpsertA creates FQDN, IP address and A record edge in the graph and associates them with a source and event.
-func (g *Graph) UpsertA(fqdn, addr, source, eventID string) error {
+func (g *Graph) UpsertA(ctx context.Context, fqdn, addr, source, eventID string) error {
 	return g.addrRecord(fqdn, addr, source, eventID, "a_record")
 }
 
 // UpsertAAAA creates FQDN, IP address and AAAA record edge in the graph and associates them with a source and event.
-func (g *Graph) UpsertAAAA(fqdn, addr, source, eventID string) error {
+func (g *Graph) UpsertAAAA(ctx context.Context, fqdn, addr, source, eventID string) error {
 	return g.addrRecord(fqdn, addr, source, eventID, "aaaa_record")
 }
 

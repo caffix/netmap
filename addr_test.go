@@ -4,6 +4,7 @@
 package netmap
 
 import (
+	"context"
 	"testing"
 )
 
@@ -13,7 +14,7 @@ func TestAddress(t *testing.T) {
 
 	for _, tt := range graphTest {
 		t.Run("Testing UpsertAddress...", func(t *testing.T) {
-			got, err := g.UpsertAddress(tt.Addr, tt.Source, tt.EventID)
+			got, err := g.UpsertAddress(context.Background(), tt.Addr, tt.Source, tt.EventID)
 
 			if err != nil {
 				t.Errorf("Error inserting address:%v\n", err)
@@ -25,14 +26,14 @@ func TestAddress(t *testing.T) {
 		})
 
 		t.Run("Testing UpsertA...", func(t *testing.T) {
-			err := g.UpsertA(tt.FQDN, tt.Addr, tt.Source, tt.EventID)
+			err := g.UpsertA(context.Background(), tt.FQDN, tt.Addr, tt.Source, tt.EventID)
 			if err != nil {
 				t.Errorf("Error inserting fqdn:%v\n", err)
 			}
 		})
 
 		t.Run("Testing UpsertAAAA...", func(t *testing.T) {
-			err := g.UpsertAAAA(tt.FQDN, tt.Addr, tt.Source, tt.EventID)
+			err := g.UpsertAAAA(context.Background(), tt.FQDN, tt.Addr, tt.Source, tt.EventID)
 
 			if err != nil {
 				t.Errorf("Error inserting AAAA record: %v\n", err)
@@ -49,20 +50,23 @@ func TestNameToAddrs(t *testing.T) {
 	g := NewGraph(NewCayleyGraphMemory())
 	defer g.Close()
 
-	if _, err := g.NamesToAddrs(event, fqdn); err == nil {
+	ctx := context.Background()
+	if _, err := g.NamesToAddrs(ctx, event, fqdn); err == nil {
 		t.Errorf("Did not return an error when provided parameters not existing in the graph")
 	}
 
-	g.UpsertA(fqdn, addr, "test", event)
-	if pairs, err := g.NamesToAddrs(event); err != nil || pairs[0].Name != fqdn || pairs[0].Addr != addr {
+	g.UpsertA(ctx, fqdn, addr, "test", event)
+	if pairs, err := g.NamesToAddrs(ctx, event); err != nil ||
+		pairs[0].Name != fqdn || pairs[0].Addr != addr {
 		t.Errorf("Failed to obtain the name / address pairs: %v", err)
 	}
 
-	if pairs, err := g.NamesToAddrs(event, fqdn); err != nil || pairs[0].Name != fqdn || pairs[0].Addr != addr {
+	if pairs, err := g.NamesToAddrs(ctx, event, fqdn); err != nil ||
+		pairs[0].Name != fqdn || pairs[0].Addr != addr {
 		t.Errorf("Failed to obtain the name / address pairs: %v", err)
 	}
 
-	if pairs, err := g.NamesToAddrs(event, "doesnot.exist"); err == nil {
+	if pairs, err := g.NamesToAddrs(ctx, event, "doesnot.exist"); err == nil {
 		t.Errorf("Did not return an error when provided a name not existing in the graph: %v", pairs)
 	}
 }

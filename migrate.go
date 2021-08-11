@@ -14,7 +14,7 @@ import (
 	"github.com/cayleygraph/quad"
 )
 
-func (g *Graph) Migrate(to *Graph) error {
+func (g *Graph) Migrate(ctx context.Context, to *Graph) error {
 	g.db.Lock()
 	defer g.db.Unlock()
 
@@ -36,8 +36,8 @@ func (g *Graph) Migrate(to *Graph) error {
 }
 
 // MigrateEvents copies the nodes and edges related to the Events identified by the uuids from the receiver Graph into another.
-func (g *Graph) MigrateEvents(to *Graph, uuids ...string) error {
-	quads, err := g.ReadEventQuads(uuids...)
+func (g *Graph) MigrateEvents(ctx context.Context, to *Graph, uuids ...string) error {
+	quads, err := g.ReadEventQuads(ctx, uuids...)
 
 	if err == nil {
 		err = copyQuads(to.db, quads)
@@ -47,7 +47,7 @@ func (g *Graph) MigrateEvents(to *Graph, uuids ...string) error {
 }
 
 // MigrateEventsInScope copies the nodes and edges related to the Events identified by the uuids from the receiver Graph into another.
-func (g *Graph) MigrateEventsInScope(to *Graph, d []string) error {
+func (g *Graph) MigrateEventsInScope(ctx context.Context, to *Graph, d []string) error {
 	if len(d) == 0 {
 		return errors.New("MigrateEventsInScope: No domain names provided")
 	}
@@ -62,7 +62,7 @@ func (g *Graph) MigrateEventsInScope(to *Graph, d []string) error {
 	g.db.Lock()
 	// Obtain the events that are in scope according to the domain name arguments
 	p := cayley.StartPath(g.db.store, domains...).Has(quad.IRI("type"), quad.String(TypeFQDN)).SaveReverse(quad.IRI("domain"), "uuid")
-	err := p.Iterate(context.Background()).TagValues(nil, func(m map[string]quad.Value) {
+	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
 		vals[valToStr(m["uuid"])] = struct{}{}
 	})
 	g.db.Unlock()
@@ -74,7 +74,7 @@ func (g *Graph) MigrateEventsInScope(to *Graph, d []string) error {
 	for k := range vals {
 		uuids = append(uuids, k)
 	}
-	return g.MigrateEvents(to, uuids...)
+	return g.MigrateEvents(ctx, to, uuids...)
 }
 
 func copyQuads(to *CayleyGraph, quads []quad.Quad) error {

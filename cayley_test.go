@@ -4,6 +4,7 @@
 package netmap
 
 import (
+	"context"
 	"testing"
 
 	"github.com/cayleygraph/quad"
@@ -22,7 +23,7 @@ func TestNewCayleyGraph(t *testing.T) {
 func TestDumpGraph(t *testing.T) {
 	g := NewCayleyGraphMemory()
 
-	if dump := g.DumpGraph(); dump != "" {
+	if dump := g.DumpGraph(context.Background()); dump != "" {
 		t.Errorf("DumpGraph returned a non-empty string for an empty graph")
 	}
 
@@ -33,7 +34,7 @@ func TestDumpGraph(t *testing.T) {
 		t.Errorf("Failed to add the bob quad")
 	}
 
-	if dump := g.DumpGraph(); dump == "" {
+	if dump := g.DumpGraph(context.Background()); dump == "" {
 		t.Errorf("DumpGraph returned an empty string for a non-empty graph")
 	}
 }

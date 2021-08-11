@@ -19,12 +19,12 @@ type Property struct {
 }
 
 // UpsertProperty implements the GraphDatabase interface.
-func (g *Graph) UpsertProperty(node Node, predicate, value string) error {
+func (g *Graph) UpsertProperty(ctx context.Context, node Node, predicate, value string) error {
 	g.db.Lock()
 	defer g.db.Unlock()
 
 	id := g.NodeToID(node)
-	if !g.db.nodeExists(id, "") {
+	if !g.db.nodeExists(ctx, id, "") {
 		return fmt.Errorf("%s: UpsertProperty: Invalid node reference argument", g.String())
 	}
 
@@ -47,14 +47,14 @@ func (g *CayleyGraph) quadsUpsertProperty(t *graph.Transaction, id, predicate st
 }
 
 // ReadProperties implements the GraphDatabase interface.
-func (g *Graph) ReadProperties(node Node, predicates ...string) ([]*Property, error) {
+func (g *Graph) ReadProperties(ctx context.Context, node Node, predicates ...string) ([]*Property, error) {
 	g.db.Lock()
 	defer g.db.Unlock()
 
 	nstr := g.NodeToID(node)
 	var properties []*Property
 
-	if nstr == "" || !g.db.nodeExists(nstr, "") {
+	if nstr == "" || !g.db.nodeExists(ctx, nstr, "") {
 		return properties, fmt.Errorf("%s: ReadProperties: Invalid node reference argument", g.String())
 	}
 
@@ -66,7 +66,7 @@ func (g *Graph) ReadProperties(node Node, predicates ...string) ([]*Property, er
 	}
 	p = p.Tag("object")
 
-	err := p.Iterate(context.Background()).TagValues(nil, func(m map[string]quad.Value) {
+	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
 		// Check if this is actually a node and not a property
 		if !isIRI(m["object"]) {
 			properties = append(properties, &Property{
@@ -81,12 +81,12 @@ func (g *Graph) ReadProperties(node Node, predicates ...string) ([]*Property, er
 }
 
 // CountProperties implements the GraphDatabase interface.
-func (g *Graph) CountProperties(node Node, predicates ...string) (int, error) {
+func (g *Graph) CountProperties(ctx context.Context, node Node, predicates ...string) (int, error) {
 	g.db.Lock()
 	defer g.db.Unlock()
 
 	nstr := g.NodeToID(node)
-	if nstr == "" || !g.db.nodeExists(nstr, "") {
+	if nstr == "" || !g.db.nodeExists(ctx, nstr, "") {
 		return 0, fmt.Errorf("%s: CountProperties: Invalid node reference argument", g.String())
 	}
 
@@ -98,7 +98,7 @@ func (g *Graph) CountProperties(node Node, predicates ...string) (int, error) {
 	}
 
 	var count int
-	err := p.Iterate(context.Background()).EachValue(nil, func(value quad.Value) {
+	err := p.Iterate(ctx).EachValue(nil, func(value quad.Value) {
 		if !isIRI(value) {
 			count++
 		}
@@ -107,13 +107,13 @@ func (g *Graph) CountProperties(node Node, predicates ...string) (int, error) {
 }
 
 // DeleteProperty implements the GraphDatabase interface.
-func (g *Graph) DeleteProperty(node Node, predicate string, value interface{}) error {
+func (g *Graph) DeleteProperty(ctx context.Context, node Node, predicate string, value interface{}) error {
 	g.db.Lock()
 	defer g.db.Unlock()
 
 	v, ok := quad.AsValue(value)
 	nstr := g.NodeToID(node)
-	if !ok || nstr == "" || !g.db.nodeExists(nstr, "") {
+	if !ok || nstr == "" || !g.db.nodeExists(ctx, nstr, "") {
 		return fmt.Errorf("%s: DeleteProperty: Invalid node reference argument", g.String())
 	}
 

@@ -128,13 +128,13 @@ func (g *CayleyGraph) String() string {
 }
 
 // DumpGraph prints all data currently in the graph.
-func (g *CayleyGraph) DumpGraph() string {
+func (g *CayleyGraph) DumpGraph(ctx context.Context) string {
 	g.Lock()
 	defer g.Unlock()
 
 	var out string
 	p := cayley.StartPath(g.store).Tag("subject").OutWithTags([]string{"predicate"}).Tag("object")
-	err := p.Iterate(context.TODO()).TagValues(nil, func(m map[string]quad.Value) {
+	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
 		out += fmt.Sprintf("%s -> %s -> %s\n", m["subject"], m["predicate"], m["object"])
 	})
 	if err != nil {

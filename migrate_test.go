@@ -4,6 +4,7 @@
 package netmap
 
 import (
+	"context"
 	"testing"
 
 	"github.com/caffix/stringset"
@@ -18,9 +19,10 @@ func TestMigrate(t *testing.T) {
 	to := NewGraph(NewCayleyGraphMemory())
 	defer to.Close()
 
-	from.UpsertA("www.google.com", "192.168.1.1", "DNS", "event1")
-	from.UpsertA("www.caffix.net", "10.0.1.1", "DNS", "event2")
-	if err := from.Migrate(to); err != nil {
+	ctx := context.Background()
+	from.UpsertA(ctx, "www.google.com", "192.168.1.1", "DNS", "event1")
+	from.UpsertA(ctx, "www.caffix.net", "10.0.1.1", "DNS", "event2")
+	if err := from.Migrate(ctx, to); err != nil {
 		t.Errorf("Migration failed to copy graph data")
 	}
 
@@ -56,22 +58,23 @@ func TestMigrateEventsInScope(t *testing.T) {
 	to := NewGraph(NewCayleyGraphMemory())
 	defer to.Close()
 
-	if err := from.MigrateEventsInScope(to, nil); err == nil {
+	ctx := context.Background()
+	if err := from.MigrateEventsInScope(ctx, to, nil); err == nil {
 		t.Errorf("Failed to report an error when provided no domain for scope")
 	}
 
-	from.UpsertA("www.google.com", "192.168.1.1", "DNS", "event1")
-	from.UpsertA("www.caffix.net", "10.0.1.1", "DNS", "event2")
-	if err := from.MigrateEventsInScope(to, []string{"google.com"}); err != nil {
+	from.UpsertA(ctx, "www.google.com", "192.168.1.1", "DNS", "event1")
+	from.UpsertA(ctx, "www.caffix.net", "10.0.1.1", "DNS", "event2")
+	if err := from.MigrateEventsInScope(ctx, to, []string{"google.com"}); err != nil {
 		t.Errorf("Migration failed to copy graph data including the provided domain: %v", err)
 	}
-	if pairs, err := to.NamesToAddrs("event1", "www.google.com"); err != nil || len(pairs) == 0 {
+	if pairs, err := to.NamesToAddrs(ctx, "event1", "www.google.com"); err != nil || len(pairs) == 0 {
 		t.Errorf("The migration failed to copy graph data for the A record in scope")
 	}
-	if _, err := to.NamesToAddrs("event1", "www.caffix.net"); err == nil {
+	if _, err := to.NamesToAddrs(ctx, "event1", "www.caffix.net"); err == nil {
 		t.Errorf("The migration copied graph data that was out of scope")
 	}
-	if events := to.EventList(); len(events) != 1 || events[0] != "event1" {
+	if events := to.EventList(ctx); len(events) != 1 || events[0] != "event1" {
 		t.Errorf("The migration copied events that are out of scope: Expected event1, Got %v", events)
 	}
 }

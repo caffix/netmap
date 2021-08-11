@@ -20,7 +20,7 @@ import (
 const TypeEvent string = "event"
 
 // UpsertEvent create an event node in the graph that represents a discovery task.
-func (g *Graph) UpsertEvent(eventID string) (Node, error) {
+func (g *Graph) UpsertEvent(ctx context.Context, eventID string) (Node, error) {
 	t := graph.NewTransaction()
 
 	if err := g.quadsUpsertEvent(t, eventID); err != nil {
@@ -65,7 +65,7 @@ func (g *Graph) quadsUpsertEvent(t *graph.Transaction, eventID string) error {
 }
 
 // AddNodeToEvent creates associations between a node in the graph, a data source and a discovery task.
-func (g *Graph) AddNodeToEvent(node Node, source, eventID string) error {
+func (g *Graph) AddNodeToEvent(ctx context.Context, node Node, source, eventID string) error {
 	t := graph.NewTransaction()
 
 	if err := g.quadsAddNodeToEvent(t, g.NodeToID(node), source, eventID); err != nil {
@@ -97,8 +97,8 @@ func (g *Graph) quadsAddNodeToEvent(t *graph.Transaction, node, source, eventID 
 }
 
 // InEventScope checks if the Node parameter is within scope of the Event identified by the uuid parameter.
-func (g *Graph) InEventScope(node Node, uuid string, predicates ...string) bool {
-	if edges, err := g.ReadInEdges(node, predicates...); err == nil {
+func (g *Graph) InEventScope(ctx context.Context, node Node, uuid string, predicates ...string) bool {
+	if edges, err := g.ReadInEdges(ctx, node, predicates...); err == nil {
 		for _, edge := range edges {
 			if g.NodeToID(edge.From) == uuid {
 				return true
@@ -109,7 +109,7 @@ func (g *Graph) InEventScope(node Node, uuid string, predicates ...string) bool 
 }
 
 // EventsInScope returns the events that include all of the domain arguments.
-func (g *Graph) EventsInScope(d ...string) []string {
+func (g *Graph) EventsInScope(ctx context.Context, d ...string) []string {
 	g.db.Lock()
 	defer g.db.Unlock()
 
@@ -120,7 +120,7 @@ func (g *Graph) EventsInScope(d ...string) []string {
 
 	var events []string
 	p := cayley.StartPath(g.db.store, domains...).In(quad.IRI("domain")).Unique()
-	_ = p.Iterate(context.Background()).EachValue(nil, func(value quad.Value) {
+	_ = p.Iterate(ctx).EachValue(nil, func(value quad.Value) {
 		events = append(events, valToStr(value))
 	})
 
@@ -128,10 +128,10 @@ func (g *Graph) EventsInScope(d ...string) []string {
 }
 
 // EventList returns a list of event UUIDs found in the graph.
-func (g *Graph) EventList() []string {
+func (g *Graph) EventList(ctx context.Context) []string {
 	var events []string
 
-	if nodes, err := g.AllNodesOfType(TypeEvent); err == nil {
+	if nodes, err := g.AllNodesOfType(ctx, TypeEvent); err == nil {
 		ids := stringset.New()
 
 		for _, node := range nodes {
@@ -148,13 +148,13 @@ func (g *Graph) EventList() []string {
 }
 
 // EventFQDNs returns the domains that were involved in the event.
-func (g *Graph) EventFQDNs(uuid string) []string {
+func (g *Graph) EventFQDNs(ctx context.Context, uuid string) []string {
 	names := stringset.New()
 
-	if domains := g.EventDomains(uuid); domains != nil {
+	if domains := g.EventDomains(ctx, uuid); domains != nil {
 		names.InsertMany(domains...)
 	}
-	if subs := g.EventSubdomains(uuid); subs != nil {
+	if subs := g.EventSubdomains(ctx, uuid); subs != nil {
 		names.InsertMany(subs...)
 	}
 
@@ -162,14 +162,14 @@ func (g *Graph) EventFQDNs(uuid string) []string {
 }
 
 // EventDomains returns the domains that were involved in the event.
-func (g *Graph) EventDomains(uuid string) []string {
-	event, err := g.ReadNode(uuid, TypeEvent)
+func (g *Graph) EventDomains(ctx context.Context, uuid string) []string {
+	event, err := g.ReadNode(ctx, uuid, TypeEvent)
 	if err != nil {
 		return nil
 	}
 
 	domains := stringset.New()
-	if edges, err := g.ReadOutEdges(event, "domain"); err == nil {
+	if edges, err := g.ReadOutEdges(ctx, event, "domain"); err == nil {
 		for _, edge := range edges {
 			if d := g.NodeToID(edge.To); d != "" {
 				domains.Insert(d)
@@ -181,8 +181,8 @@ func (g *Graph) EventDomains(uuid string) []string {
 }
 
 // EventSubdomains returns the subdomains discovered during the event(s).
-func (g *Graph) EventSubdomains(events ...string) []string {
-	nodes, err := g.AllNodesOfType(TypeFQDN, events...)
+func (g *Graph) EventSubdomains(ctx context.Context, events ...string) []string {
+	nodes, err := g.AllNodesOfType(ctx, TypeFQDN, events...)
 	if err != nil {
 		return nil
 	}
@@ -202,11 +202,11 @@ func (g *Graph) EventSubdomains(events ...string) []string {
 }
 
 // EventDateRange returns the date range associated with the provided event UUID.
-func (g *Graph) EventDateRange(uuid string) (time.Time, time.Time) {
+func (g *Graph) EventDateRange(ctx context.Context, uuid string) (time.Time, time.Time) {
 	var start, finish time.Time
 
-	if event, err := g.ReadNode(uuid, TypeEvent); err == nil {
-		if properties, err := g.ReadProperties(event, "start", "finish"); err == nil {
+	if event, err := g.ReadNode(ctx, uuid, TypeEvent); err == nil {
+		if properties, err := g.ReadProperties(ctx, event, "start", "finish"); err == nil {
 			for _, p := range properties {
 				if t := p.Value.Native(); t != nil && p.Predicate == "start" {
 					start = t.(time.Time)
@@ -221,7 +221,7 @@ func (g *Graph) EventDateRange(uuid string) (time.Time, time.Time) {
 }
 
 // ReadEventQuads returns all graph database quads associated with the provided events.
-func (g *Graph) ReadEventQuads(uuids ...string) ([]quad.Quad, error) {
+func (g *Graph) ReadEventQuads(ctx context.Context, uuids ...string) ([]quad.Quad, error) {
 	g.db.Lock()
 	defer g.db.Unlock()
 
@@ -235,7 +235,7 @@ func (g *Graph) ReadEventQuads(uuids ...string) ([]quad.Quad, error) {
 	// Build quads for the events in scope
 	p := cayley.StartPath(g.db.store, events...).Has(quad.IRI("type"), quad.String(TypeEvent))
 	p = p.Tag("subject").OutWithTags([]string{"predicate"}).Tag("object")
-	err := p.Iterate(context.Background()).TagValues(nil, func(m map[string]quad.Value) {
+	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
 		if isIRI(m["object"]) {
 			nodeMap[valToStr(m["object"])] = m["object"]
 		}
@@ -259,7 +259,7 @@ func (g *Graph) ReadEventQuads(uuids ...string) ([]quad.Quad, error) {
 	// Build quads for all nodes associated with the events in scope
 	p = cayley.StartPath(g.db.store, nodes...).Has(quad.IRI("type"))
 	p = p.Tag("subject").OutWithTags([]string{"predicate"}).Tag("object")
-	err = p.Iterate(context.Background()).TagValues(nil, func(m map[string]quad.Value) {
+	err = p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
 		var label quad.Value
 		if valToStr(m["predicate"]) == "type" {
 			label = quad.IRI(valToStr(m["object"]))

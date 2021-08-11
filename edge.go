@@ -27,7 +27,7 @@ type Edge struct {
 }
 
 // UpsertEdge will create an edge in the database if it does not already exist.
-func (g *Graph) UpsertEdge(edge *Edge) error {
+func (g *Graph) UpsertEdge(ctx context.Context, edge *Edge) error {
 	t := graph.NewTransaction()
 
 	if edge.Predicate == "" {
@@ -68,14 +68,14 @@ func (g *CayleyGraph) quadsUpsertEdge(t *graph.Transaction, predicate, from, to 
 }
 
 // ReadEdges implements the GraphDatabase interface.
-func (g *Graph) ReadEdges(node Node, predicates ...string) ([]*Edge, error) {
+func (g *Graph) ReadEdges(ctx context.Context, node Node, predicates ...string) ([]*Edge, error) {
 	var edges []*Edge
 
-	if e, err := g.ReadInEdges(node, predicates...); err == nil {
+	if e, err := g.ReadInEdges(ctx, node, predicates...); err == nil {
 		edges = append(edges, e...)
 	}
 
-	if e, err := g.ReadOutEdges(node, predicates...); err == nil {
+	if e, err := g.ReadOutEdges(ctx, node, predicates...); err == nil {
 		edges = append(edges, e...)
 	}
 
@@ -87,16 +87,16 @@ func (g *Graph) ReadEdges(node Node, predicates ...string) ([]*Edge, error) {
 }
 
 // CountEdges counts the total number of edges to a node.
-func (g *Graph) CountEdges(node Node, predicates ...string) (int, error) {
+func (g *Graph) CountEdges(ctx context.Context, node Node, predicates ...string) (int, error) {
 	var count int
 
-	if c, err := g.CountInEdges(node, predicates...); err == nil {
+	if c, err := g.CountInEdges(ctx, node, predicates...); err == nil {
 		count += c
 	} else {
 		return 0, fmt.Errorf("%s: CountEdges: %v", g.String(), err)
 	}
 
-	if c, err := g.CountOutEdges(node, predicates...); err == nil {
+	if c, err := g.CountOutEdges(ctx, node, predicates...); err == nil {
 		count += c
 	}
 
@@ -104,12 +104,12 @@ func (g *Graph) CountEdges(node Node, predicates ...string) (int, error) {
 }
 
 // ReadInEdges implements the GraphDatabase interface.
-func (g *Graph) ReadInEdges(node Node, predicates ...string) ([]*Edge, error) {
+func (g *Graph) ReadInEdges(ctx context.Context, node Node, predicates ...string) ([]*Edge, error) {
 	g.db.Lock()
 	defer g.db.Unlock()
 
 	nstr := g.NodeToID(node)
-	if nstr == "" || !g.db.nodeExists(nstr, "") {
+	if nstr == "" || !g.db.nodeExists(ctx, nstr, "") {
 		return nil, fmt.Errorf("%s: ReadInEdges: Invalid node reference argument", g.String())
 	}
 
@@ -131,7 +131,7 @@ func (g *Graph) ReadInEdges(node Node, predicates ...string) ([]*Edge, error) {
 	p = p.Has(quad.IRI("type")).Tag("object")
 
 	var edges []*Edge
-	err := p.Iterate(context.TODO()).TagValues(nil, func(m map[string]quad.Value) {
+	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
 		edges = append(edges, &Edge{
 			Predicate: valToStr(m["predicate"]),
 			From:      valToStr(m["object"]),
@@ -146,12 +146,12 @@ func (g *Graph) ReadInEdges(node Node, predicates ...string) ([]*Edge, error) {
 }
 
 // CountInEdges implements the GraphDatabase interface.
-func (g *Graph) CountInEdges(node Node, predicates ...string) (int, error) {
+func (g *Graph) CountInEdges(ctx context.Context, node Node, predicates ...string) (int, error) {
 	g.db.Lock()
 	defer g.db.Unlock()
 
 	nstr := g.NodeToID(node)
-	if nstr == "" || !g.db.nodeExists(nstr, "") {
+	if nstr == "" || !g.db.nodeExists(ctx, nstr, "") {
 		return 0, fmt.Errorf("%s: CountInEdges: Invalid node reference argument", g.String())
 	}
 
@@ -162,18 +162,18 @@ func (g *Graph) CountInEdges(node Node, predicates ...string) (int, error) {
 		p = p.In(strsToVals(predicates...))
 	}
 	p = p.Has(quad.IRI("type"))
-	count, err := p.Iterate(context.Background()).Count()
+	count, err := p.Iterate(ctx).Count()
 
 	return int(count), err
 }
 
 // ReadOutEdges implements the GraphDatabase interface.
-func (g *Graph) ReadOutEdges(node Node, predicates ...string) ([]*Edge, error) {
+func (g *Graph) ReadOutEdges(ctx context.Context, node Node, predicates ...string) ([]*Edge, error) {
 	g.db.Lock()
 	defer g.db.Unlock()
 
 	nstr := g.NodeToID(node)
-	if nstr == "" || !g.db.nodeExists(nstr, "") {
+	if nstr == "" || !g.db.nodeExists(ctx, nstr, "") {
 		return nil, fmt.Errorf("%s: ReadOutEdges: Invalid node reference argument", g.String())
 	}
 
@@ -195,7 +195,7 @@ func (g *Graph) ReadOutEdges(node Node, predicates ...string) ([]*Edge, error) {
 	p = p.Has(quad.IRI("type")).Tag("object")
 
 	var edges []*Edge
-	err := p.Iterate(context.TODO()).TagValues(nil, func(m map[string]quad.Value) {
+	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
 		edges = append(edges, &Edge{
 			Predicate: valToStr(m["predicate"]),
 			From:      node,
@@ -210,12 +210,12 @@ func (g *Graph) ReadOutEdges(node Node, predicates ...string) ([]*Edge, error) {
 }
 
 // CountOutEdges implements the GraphDatabase interface.
-func (g *Graph) CountOutEdges(node Node, predicates ...string) (int, error) {
+func (g *Graph) CountOutEdges(ctx context.Context, node Node, predicates ...string) (int, error) {
 	g.db.Lock()
 	defer g.db.Unlock()
 
 	nstr := g.NodeToID(node)
-	if nstr == "" || !g.db.nodeExists(nstr, "") {
+	if nstr == "" || !g.db.nodeExists(ctx, nstr, "") {
 		return 0, fmt.Errorf("%s: CountOutEdges: Invalid node reference argument", g.String())
 	}
 
@@ -226,13 +226,13 @@ func (g *Graph) CountOutEdges(node Node, predicates ...string) (int, error) {
 		p = p.Out(strsToVals(predicates...))
 	}
 	p = p.Has(quad.IRI("type"))
-	count, err := p.Iterate(context.Background()).Count()
+	count, err := p.Iterate(ctx).Count()
 
 	return int(count), err
 }
 
 // DeleteEdge implements the GraphDatabase interface.
-func (g *Graph) DeleteEdge(edge *Edge) error {
+func (g *Graph) DeleteEdge(ctx context.Context, edge *Edge) error {
 	g.db.Lock()
 	defer g.db.Unlock()
 

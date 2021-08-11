@@ -23,7 +23,7 @@ func (g *Graph) NodeToID(n Node) string {
 
 // AllNodesOfType provides all nodes in the graph of the identified
 // type within the optionally identified events.
-func (g *Graph) AllNodesOfType(ntype string, uuids ...string) ([]Node, error) {
+func (g *Graph) AllNodesOfType(ctx context.Context, ntype string, uuids ...string) ([]Node, error) {
 	g.db.Lock()
 	defer g.db.Unlock()
 
@@ -41,7 +41,7 @@ func (g *Graph) AllNodesOfType(ntype string, uuids ...string) ([]Node, error) {
 
 	var nodes []Node
 	filter := stringset.New()
-	err := p.Iterate(context.Background()).EachValue(nil, func(value quad.Value) {
+	err := p.Iterate(ctx).EachValue(nil, func(value quad.Value) {
 		if nstr := valToStr(value); !filter.Has(nstr) {
 			filter.Insert(nstr)
 			nodes = append(nodes, nstr)
@@ -55,14 +55,14 @@ func (g *Graph) AllNodesOfType(ntype string, uuids ...string) ([]Node, error) {
 }
 
 // AllOutNodes returns all the nodes that the parameter node has out edges to.
-func (g *Graph) AllOutNodes(node Node) ([]Node, error) {
+func (g *Graph) AllOutNodes(ctx context.Context, node Node) ([]Node, error) {
 	g.db.Lock()
 	defer g.db.Unlock()
 
 	var nodes []Node
 	filter := stringset.New()
 	p := cayley.StartPath(g.db.store, quad.IRI(g.NodeToID(node))).Out().Has(quad.IRI("type"))
-	err := p.Iterate(context.Background()).EachValue(nil, func(value quad.Value) {
+	err := p.Iterate(ctx).EachValue(nil, func(value quad.Value) {
 		if nstr := valToStr(value); !filter.Has(nstr) {
 			filter.Insert(nstr)
 			nodes = append(nodes, nstr)
@@ -76,7 +76,7 @@ func (g *Graph) AllOutNodes(node Node) ([]Node, error) {
 }
 
 // UpsertNode will create a node in the database.
-func (g *Graph) UpsertNode(id, ntype string) (Node, error) {
+func (g *Graph) UpsertNode(ctx context.Context, id, ntype string) (Node, error) {
 	t := graph.NewTransaction()
 
 	if err := g.db.quadsUpsertNode(t, id, ntype); err != nil {
@@ -96,7 +96,7 @@ func (g *CayleyGraph) quadsUpsertNode(t *graph.Transaction, id, ntype string) er
 }
 
 // ReadNode returns the node matching the id and type arguments.
-func (g *Graph) ReadNode(id, ntype string) (Node, error) {
+func (g *Graph) ReadNode(ctx context.Context, id, ntype string) (Node, error) {
 	g.db.Lock()
 	defer g.db.Unlock()
 
@@ -105,7 +105,7 @@ func (g *Graph) ReadNode(id, ntype string) (Node, error) {
 	}
 
 	// Check that a node with 'id' as a subject already exists
-	if !g.db.nodeExists(id, ntype) {
+	if !g.db.nodeExists(ctx, id, ntype) {
 		return nil, fmt.Errorf("%s: ReadNode: Node %s does not exist", g.String(), id)
 	}
 
@@ -113,7 +113,7 @@ func (g *Graph) ReadNode(id, ntype string) (Node, error) {
 }
 
 // DeleteNode implements the GraphDatabase interface.
-func (g *Graph) DeleteNode(node Node) error {
+func (g *Graph) DeleteNode(ctx context.Context, node Node) error {
 	g.db.Lock()
 	defer g.db.Unlock()
 
@@ -123,23 +123,23 @@ func (g *Graph) DeleteNode(node Node) error {
 	}
 
 	// Check that a node with 'id' as a subject already exists
-	if !g.db.nodeExists(id, "") {
+	if !g.db.nodeExists(ctx, id, "") {
 		return fmt.Errorf("%s: DeleteNode: Node %s does not exist", g.String(), id)
 	}
 
 	t := cayley.NewTransaction()
 	// Build the transaction that will perform the deletion
-	if err := g.db.quadsDeleteNode(t, id); err != nil {
+	if err := g.db.quadsDeleteNode(ctx, t, id); err != nil {
 		return err
 	}
 	// Attempt to perform the deletion transaction
 	return g.db.store.ApplyTransaction(t)
 }
 
-func (g *CayleyGraph) quadsDeleteNode(t *graph.Transaction, id string) error {
+func (g *CayleyGraph) quadsDeleteNode(ctx context.Context, t *graph.Transaction, id string) error {
 	p := cayley.StartPath(g.store, quad.IRI(id)).Tag(
 		"subject").BothWithTags([]string{"predicate"}).Tag("object")
-	err := p.Iterate(context.TODO()).TagValues(nil, func(m map[string]quad.Value) {
+	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
 		t.RemoveQuad(quad.Make(m["subject"], m["predicate"], m["object"], nil))
 	})
 	if err != nil {
@@ -150,7 +150,7 @@ func (g *CayleyGraph) quadsDeleteNode(t *graph.Transaction, id string) error {
 }
 
 // WriteNodeQuads replicates nodes from the cg parameter to the receiver Graph.
-func (g *Graph) WriteNodeQuads(cg *Graph, nodes []Node) error {
+func (g *Graph) WriteNodeQuads(ctx context.Context, cg *Graph, nodes []Node) error {
 	cg.db.Lock()
 	defer cg.db.Unlock()
 
@@ -161,7 +161,7 @@ func (g *Graph) WriteNodeQuads(cg *Graph, nodes []Node) error {
 
 	var quads []quad.Quad
 	p := cayley.StartPath(cg.db.store, nodeValues...).Tag("subject").OutWithTags([]string{"predicate"}).Tag("object")
-	err := p.Iterate(context.TODO()).TagValues(nil, func(m map[string]quad.Value) {
+	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
 		var label quad.Value
 		if valToStr(m["predicate"]) == "type" {
 			label = quad.IRI(valToStr(m["object"]))
@@ -175,7 +175,7 @@ func (g *Graph) WriteNodeQuads(cg *Graph, nodes []Node) error {
 	return copyQuads(g.db, quads)
 }
 
-func (g *CayleyGraph) nodeExists(id, ntype string) bool {
+func (g *CayleyGraph) nodeExists(ctx context.Context, id, ntype string) bool {
 	p := cayley.StartPath(g.store, quad.IRI(id))
 
 	if ntype == "" {
@@ -185,7 +185,7 @@ func (g *CayleyGraph) nodeExists(id, ntype string) bool {
 	}
 
 	var found bool
-	if first, err := p.Iterate(context.Background()).FirstValue(nil); err == nil && first != nil {
+	if first, err := p.Iterate(ctx).FirstValue(nil); err == nil && first != nil {
 		found = true
 	}
 

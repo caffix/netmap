@@ -4,6 +4,7 @@
 package netmap
 
 import (
+	"context"
 	"strconv"
 	"testing"
 )
@@ -15,7 +16,7 @@ func TestAS(t *testing.T) {
 	newdesc := "Great ASN"
 	for _, tt := range graphTest {
 		t.Run("Testing UpsertAS...", func(t *testing.T) {
-			got, err := g.UpsertAS(tt.ASNString, tt.Desc, tt.Source, tt.EventID)
+			got, err := g.UpsertAS(context.Background(), tt.ASNString, tt.Desc, tt.Source, tt.EventID)
 
 			if err != nil {
 				t.Errorf("Error inserting AS: %v\n", err)
@@ -26,7 +27,7 @@ func TestAS(t *testing.T) {
 		})
 
 		t.Run("Testing UpsertInfrastructure", func(t *testing.T) {
-			err := g.UpsertInfrastructure(tt.ASN, newdesc, tt.Addr, tt.CIDR, tt.Source, tt.EventID)
+			err := g.UpsertInfrastructure(context.Background(), tt.ASN, newdesc, tt.Addr, tt.CIDR, tt.Source, tt.EventID)
 			if err != nil {
 				t.Errorf("Error inserting infrastructure: %v\n", err)
 			}
@@ -36,7 +37,7 @@ func TestAS(t *testing.T) {
 			var got string
 
 			if asn, err := strconv.Atoi(tt.ASNString); err == nil {
-				got = g.ReadASDescription(asn)
+				got = g.ReadASDescription(context.Background(), asn)
 			}
 
 			if got != newdesc {
@@ -48,7 +49,7 @@ func TestAS(t *testing.T) {
 			var got []string
 
 			if asn, err := strconv.Atoi(tt.ASNString); err == nil {
-				got = g.ReadASPrefixes(asn)
+				got = g.ReadASPrefixes(context.Background(), asn)
 			}
 
 			if len(got) != 1 || got[0] != tt.CIDR {

@@ -4,6 +4,7 @@
 package netmap
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -47,8 +48,8 @@ func (g *Graph) String() string {
 }
 
 // DumpGraph prints all data currently in the graph.
-func (g *Graph) DumpGraph() string {
-	return g.db.DumpGraph()
+func (g *Graph) DumpGraph(ctx context.Context) string {
+	return g.db.DumpGraph(ctx)
 }
 
 func isIRI(val quad.Value) bool {

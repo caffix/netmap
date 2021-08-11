@@ -17,11 +17,11 @@ func TestUpsertProperty(t *testing.T) {
 	g := NewGraph(cay)
 	defer g.Close()
 
-	if err := g.UpsertProperty("", "like", "coffee"); err == nil {
+	if err := g.UpsertProperty(context.Background(), "", "like", "coffee"); err == nil {
 		t.Errorf("UpsertProperty returned no error when provided an empty node argument")
 	}
 
-	if err := g.UpsertProperty("Bob", "like", "Go"); err == nil {
+	if err := g.UpsertProperty(context.Background(), "Bob", "like", "Go"); err == nil {
 		t.Errorf("UpsertProperty returned no error when provided a node that doesn't exist")
 	}
 
@@ -32,11 +32,11 @@ func TestUpsertProperty(t *testing.T) {
 		t.Errorf("Failed to add the bob quad")
 	}
 
-	if err := g.UpsertProperty("Bob", "", "coffee"); err == nil {
+	if err := g.UpsertProperty(context.Background(), "Bob", "", "coffee"); err == nil {
 		t.Errorf("UpsertProperty returned no error when provided an empty predicate argument")
 	}
 
-	if err := g.UpsertProperty("Bob", "likes", "coffee"); err != nil {
+	if err := g.UpsertProperty(context.Background(), "Bob", "likes", "coffee"); err != nil {
 		t.Errorf("UpsertProperty returned an error when provided a valid node and property arguments")
 	}
 
@@ -46,7 +46,7 @@ func TestUpsertProperty(t *testing.T) {
 	}
 
 	// A second attempt to insert the property should return no error
-	if err := g.UpsertProperty("Bob", "likes", "coffee"); err != nil {
+	if err := g.UpsertProperty(context.Background(), "Bob", "likes", "coffee"); err != nil {
 		t.Errorf("UpsertProperty returned no error when attempting the insertion twice")
 	}
 }
@@ -56,11 +56,11 @@ func TestReadProperties(t *testing.T) {
 	g := NewGraph(cay)
 	defer g.Close()
 
-	if _, err := g.ReadProperties("", "likes"); err == nil {
+	if _, err := g.ReadProperties(context.Background(), "", "likes"); err == nil {
 		t.Errorf("ReadProperties returned no error when provided an empty node argument")
 	}
 
-	if _, err := g.ReadProperties("Bob", "likes"); err == nil {
+	if _, err := g.ReadProperties(context.Background(), "Bob", "likes"); err == nil {
 		t.Errorf("ReadProperties returned no error when provided a node that doesn't exist")
 	}
 
@@ -71,7 +71,7 @@ func TestReadProperties(t *testing.T) {
 		t.Errorf("Failed to add the bob quad")
 	}
 
-	properties, err := g.ReadProperties("Bob")
+	properties, err := g.ReadProperties(context.Background(), "Bob")
 	if err != nil {
 		t.Errorf("ReadProperties returned an error when provided a valid node")
 	}
@@ -95,7 +95,7 @@ func TestReadProperties(t *testing.T) {
 		t.Errorf("Failed to add the bob likes Go quad")
 	}
 
-	properties, err = g.ReadProperties("Bob")
+	properties, err = g.ReadProperties(context.Background(), "Bob")
 	if err != nil {
 		t.Errorf("ReadProperties returned an error when provided a valid node")
 	}
@@ -111,7 +111,7 @@ func TestReadProperties(t *testing.T) {
 		t.Errorf("ReadProperties did not return the expected properties: %v", got.Slice())
 	}
 
-	properties, err = g.ReadProperties("Bob", "likes")
+	properties, err = g.ReadProperties(context.Background(), "Bob", "likes")
 	if err != nil {
 		t.Errorf("ReadProperties returned an error when provided a valid node")
 	}
@@ -133,11 +133,11 @@ func TestCountProperties(t *testing.T) {
 	g := NewGraph(cay)
 	defer g.Close()
 
-	if _, err := g.CountProperties("", "likes"); err == nil {
+	if _, err := g.CountProperties(context.Background(), "", "likes"); err == nil {
 		t.Errorf("CountProperties returned no error when provided an empty node argument")
 	}
 
-	if _, err := g.CountProperties("Bob", "likes"); err == nil {
+	if _, err := g.CountProperties(context.Background(), "Bob", "likes"); err == nil {
 		t.Errorf("CountProperties returned no error when provided a node that doesn't exist")
 	}
 
@@ -148,7 +148,7 @@ func TestCountProperties(t *testing.T) {
 		t.Errorf("Failed to add the bob quad")
 	}
 
-	if count, err := g.CountProperties("Bob"); err != nil {
+	if count, err := g.CountProperties(context.Background(), "Bob"); err != nil {
 		t.Errorf("CountProperties returned an error when provided a valid node")
 	} else if count != 1 {
 		t.Errorf("CountProperties returned an incorrect count for a valid node")
@@ -162,13 +162,13 @@ func TestCountProperties(t *testing.T) {
 		t.Errorf("Failed to add the bob likes Go quad")
 	}
 
-	if count, err := g.CountProperties("Bob"); err != nil {
+	if count, err := g.CountProperties(context.Background(), "Bob"); err != nil {
 		t.Errorf("CountProperties returned an error when provided a valid node with additional properties")
 	} else if count != 3 {
 		t.Errorf("CountProperties returned an incorrect count for a valid node with additional properties")
 	}
 
-	if count, err := g.CountProperties("Bob", "likes"); err != nil {
+	if count, err := g.CountProperties(context.Background(), "Bob", "likes"); err != nil {
 		t.Errorf("CountProperties returned an error when provided a valid node, additional properties and a constraint")
 	} else if count != 2 {
 		t.Errorf("CountProperties returned an incorrect count for a valid node, additional properties and a constraint")
@@ -180,11 +180,11 @@ func TestDeleteProperty(t *testing.T) {
 	g := NewGraph(cay)
 	defer g.Close()
 
-	if err := g.DeleteProperty("", "likes", "coffee"); err == nil {
+	if err := g.DeleteProperty(context.Background(), "", "likes", "coffee"); err == nil {
 		t.Errorf("DeleteProperty returned no error when provided an empty node argument")
 	}
 
-	if err := g.DeleteProperty("Bob", "likes", "Go"); err == nil {
+	if err := g.DeleteProperty(context.Background(), "Bob", "likes", "Go"); err == nil {
 		t.Errorf("DeleteProperty returned no error when provided a node that doesn't exist")
 	}
 
@@ -199,7 +199,7 @@ func TestDeleteProperty(t *testing.T) {
 		t.Errorf("Failed to add the bob likes coffee quad")
 	}
 
-	if err := g.DeleteProperty("Bob", "likes", "coffee"); err != nil {
+	if err := g.DeleteProperty(context.Background(), "Bob", "likes", "coffee"); err != nil {
 		t.Errorf("DeleteProperty returned an error when provided a valid node and property arguments")
 	}
 

@@ -8,31 +8,32 @@ import (
 
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/quad"
+	"golang.org/x/net/context"
 )
 
 // TypeAS is the type for an autonomous system in the graph database.
 const TypeAS string = "as"
 
 // UpsertAS adds/updates an autonomous system in the graph.
-func (g *Graph) UpsertAS(asn, desc, source, eventID string) (Node, error) {
+func (g *Graph) UpsertAS(ctx context.Context, asn, desc, source, eventID string) (Node, error) {
 	n := Node(asn)
 	t := graph.NewTransaction()
 
 	var err error
-	if err := g.quadsUpsertAS(t, asn, desc, source, eventID); err == nil {
+	if err := g.quadsUpsertAS(ctx, t, asn, desc, source, eventID); err == nil {
 		err = g.db.applyWithLock(t)
 	}
 	return n, err
 }
 
-func (g *Graph) quadsUpsertAS(t *graph.Transaction, asn, desc, source, eventID string) error {
+func (g *Graph) quadsUpsertAS(ctx context.Context, t *graph.Transaction, asn, desc, source, eventID string) error {
 	if err := g.db.quadsUpsertNode(t, asn, TypeAS); err != nil {
 		return err
 	}
 
 	if a, err := strconv.Atoi(asn); err == nil {
 		// Update the 'desc' property
-		if d := g.ReadASDescription(a); d != "" && d != desc {
+		if d := g.ReadASDescription(ctx, a); d != "" && d != desc {
 			t.RemoveQuad(quad.Make(quad.IRI(asn), quad.IRI("description"), quad.String(d), nil))
 		}
 	}
@@ -45,7 +46,7 @@ func (g *Graph) quadsUpsertAS(t *graph.Transaction, asn, desc, source, eventID s
 }
 
 // UpsertInfrastructure adds/updates an associated IP address, netblock and autonomous system in the graph.
-func (g *Graph) UpsertInfrastructure(asn int, desc, addr, cidr, source, eventID string) error {
+func (g *Graph) UpsertInfrastructure(ctx context.Context, asn int, desc, addr, cidr, source, eventID string) error {
 	t := graph.NewTransaction()
 
 	if err := g.quadsUpsertAddress(t, addr, "DNS", eventID); err != nil {
@@ -60,7 +61,7 @@ func (g *Graph) UpsertInfrastructure(asn int, desc, addr, cidr, source, eventID 
 	}
 
 	asnstr := strconv.Itoa(asn)
-	if err := g.quadsUpsertAS(t, asnstr, desc, source, eventID); err != nil {
+	if err := g.quadsUpsertAS(ctx, t, asnstr, desc, source, eventID); err != nil {
 		return err
 	}
 	// Create the edge between the AS and the netblock
@@ -72,22 +73,22 @@ func (g *Graph) UpsertInfrastructure(asn int, desc, addr, cidr, source, eventID 
 }
 
 // ReadASDescription the description property of an autonomous system in the graph.
-func (g *Graph) ReadASDescription(asn int) string {
+func (g *Graph) ReadASDescription(ctx context.Context, asn int) string {
 	var result string
 
 	asnstr := strconv.Itoa(asn)
-	if p, err := g.ReadProperties(Node(asnstr), "description"); err == nil && len(p) > 0 {
+	if p, err := g.ReadProperties(ctx, Node(asnstr), "description"); err == nil && len(p) > 0 {
 		result = valToStr(p[0].Value)
 	}
 
 	return result
 }
 
-func (g *Graph) ReadASPrefixes(asn int) []string {
+func (g *Graph) ReadASPrefixes(ctx context.Context, asn int) []string {
 	var prefixes []string
 
 	asnstr := strconv.Itoa(asn)
-	if edges, err := g.ReadOutEdges(Node(asnstr), "prefix"); err == nil {
+	if edges, err := g.ReadOutEdges(ctx, Node(asnstr), "prefix"); err == nil {
 		for _, edge := range edges {
 			prefixes = append(prefixes, g.NodeToID(edge.To))
 		}

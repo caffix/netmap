@@ -4,6 +4,7 @@
 package netmap
 
 import (
+	"context"
 	"net"
 	"testing"
 )
@@ -12,7 +13,7 @@ func TestNetblock(t *testing.T) {
 	g := NewGraph(NewCayleyGraphMemory())
 	for _, tt := range graphTest {
 		t.Run("Testing UpsertNetblock...", func(t *testing.T) {
-			got, err := g.UpsertNetblock(tt.CIDR, tt.Source, tt.EventID)
+			got, err := g.UpsertNetblock(context.Background(), tt.CIDR, tt.Source, tt.EventID)
 			if err != nil {
 				t.Errorf("Error inserting netblock.\n%v\n", err)
 

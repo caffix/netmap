@@ -3,12 +3,16 @@
 
 package netmap
 
-import "github.com/cayleygraph/cayley/graph"
+import (
+	"context"
+
+	"github.com/cayleygraph/cayley/graph"
+)
 
 const TypeNetblock string = "netblock"
 
 // UpsertNetblock adds a netblock/CIDR to the graph.
-func (g *Graph) UpsertNetblock(cidr, source, eventID string) (Node, error) {
+func (g *Graph) UpsertNetblock(ctx context.Context, cidr, source, eventID string) (Node, error) {
 	t := graph.NewTransaction()
 
 	if err := g.quadsUpsertNetblock(t, cidr, source, eventID); err != nil {

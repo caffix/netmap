@@ -4,6 +4,7 @@
 package netmap
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/cayleygraph/cayley/graph"
@@ -13,7 +14,7 @@ import (
 const TypeFQDN string = "fqdn"
 
 // UpsertFQDN adds a fully qualified domain name to the graph.
-func (g *Graph) UpsertFQDN(name, source, eventID string) (Node, error) {
+func (g *Graph) UpsertFQDN(ctx context.Context, name, source, eventID string) (Node, error) {
 	t := graph.NewTransaction()
 
 	if err := g.quadsUpsertFQDN(t, name, source, eventID); err != nil {
@@ -71,13 +72,13 @@ func (g *Graph) quadsUpsertFQDN(t *graph.Transaction, name, source, eventID stri
 }
 
 // UpsertCNAME adds the FQDNs and CNAME record between them to the graph.
-func (g *Graph) UpsertCNAME(fqdn, target, source, eventID string) error {
+func (g *Graph) UpsertCNAME(ctx context.Context, fqdn, target, source, eventID string) error {
 	return g.insertAlias(fqdn, target, "cname_record", source, eventID)
 }
 
 // IsCNAMENode returns true if the FQDN has a CNAME edge to another FQDN in the graph.
-func (g *Graph) IsCNAMENode(fqdn string) bool {
-	return g.checkForOutEdge(fqdn, "cname_record")
+func (g *Graph) IsCNAMENode(ctx context.Context, fqdn string) bool {
+	return g.checkForOutEdge(ctx, fqdn, "cname_record")
 }
 
 func (g *Graph) insertAlias(fqdn, target, pred, source, eventID string) error {
@@ -97,17 +98,17 @@ func (g *Graph) insertAlias(fqdn, target, pred, source, eventID string) error {
 }
 
 // UpsertPTR adds the FQDNs and PTR record between them to the graph.
-func (g *Graph) UpsertPTR(fqdn, target, source, eventID string) error {
+func (g *Graph) UpsertPTR(ctx context.Context, fqdn, target, source, eventID string) error {
 	return g.insertAlias(fqdn, target, "ptr_record", source, eventID)
 }
 
 // IsPTRNode returns true if the FQDN has a PTR edge to another FQDN in the graph.
-func (g *Graph) IsPTRNode(fqdn string) bool {
-	return g.checkForOutEdge(fqdn, "ptr_record")
+func (g *Graph) IsPTRNode(ctx context.Context, fqdn string) bool {
+	return g.checkForOutEdge(ctx, fqdn, "ptr_record")
 }
 
 // UpsertSRV adds the FQDNs and SRV record between them to the graph.
-func (g *Graph) UpsertSRV(fqdn, service, target, source, eventID string) error {
+func (g *Graph) UpsertSRV(ctx context.Context, fqdn, service, target, source, eventID string) error {
 	// Create the edge between the service and the subdomain
 	if err := g.insertAlias(service, fqdn, "service", source, eventID); err != nil {
 		return err
@@ -118,38 +119,38 @@ func (g *Graph) UpsertSRV(fqdn, service, target, source, eventID string) error {
 }
 
 // UpsertNS adds the FQDNs and NS record between them to the graph.
-func (g *Graph) UpsertNS(fqdn, target, source, eventID string) error {
+func (g *Graph) UpsertNS(ctx context.Context, fqdn, target, source, eventID string) error {
 	return g.insertAlias(fqdn, target, "ns_record", source, eventID)
 }
 
 // IsNSNode returns true if the FQDN has a NS edge pointing to it in the graph.
-func (g *Graph) IsNSNode(fqdn string) bool {
-	return g.checkForInEdge(fqdn, "ns_record")
+func (g *Graph) IsNSNode(ctx context.Context, fqdn string) bool {
+	return g.checkForInEdge(ctx, fqdn, "ns_record")
 }
 
 // UpsertMX adds the FQDNs and MX record between them to the graph.
-func (g *Graph) UpsertMX(fqdn, target, source, eventID string) error {
+func (g *Graph) UpsertMX(ctx context.Context, fqdn, target, source, eventID string) error {
 	return g.insertAlias(fqdn, target, "mx_record", source, eventID)
 }
 
 // IsMXNode returns true if the FQDN has a MX edge pointing to it in the graph.
-func (g *Graph) IsMXNode(fqdn string) bool {
-	return g.checkForInEdge(fqdn, "mx_record")
+func (g *Graph) IsMXNode(ctx context.Context, fqdn string) bool {
+	return g.checkForInEdge(ctx, fqdn, "mx_record")
 }
 
 // IsRootDomainNode returns true if the FQDN has a 'root' edge pointing to it in the graph.
-func (g *Graph) IsRootDomainNode(fqdn string) bool {
-	return g.checkForInEdge(fqdn, "root")
+func (g *Graph) IsRootDomainNode(ctx context.Context, fqdn string) bool {
+	return g.checkForInEdge(ctx, fqdn, "root")
 }
 
 // IsTLDNode returns true if the FQDN has a 'tld' edge pointing to it in the graph.
-func (g *Graph) IsTLDNode(fqdn string) bool {
-	return g.checkForInEdge(fqdn, "tld")
+func (g *Graph) IsTLDNode(ctx context.Context, fqdn string) bool {
+	return g.checkForInEdge(ctx, fqdn, "tld")
 }
 
-func (g *Graph) checkForInEdge(id, predicate string) bool {
-	if node, err := g.ReadNode(id, TypeFQDN); err == nil {
-		count, err := g.CountInEdges(node, predicate)
+func (g *Graph) checkForInEdge(ctx context.Context, id, predicate string) bool {
+	if node, err := g.ReadNode(ctx, id, TypeFQDN); err == nil {
+		count, err := g.CountInEdges(ctx, node, predicate)
 
 		if err == nil && count > 0 {
 			return true
@@ -159,9 +160,9 @@ func (g *Graph) checkForInEdge(id, predicate string) bool {
 	return false
 }
 
-func (g *Graph) checkForOutEdge(id, predicate string) bool {
-	if node, err := g.ReadNode(id, TypeFQDN); err == nil {
-		count, err := g.CountOutEdges(node, predicate)
+func (g *Graph) checkForOutEdge(ctx context.Context, id, predicate string) bool {
+	if node, err := g.ReadNode(ctx, id, TypeFQDN); err == nil {
+		count, err := g.CountOutEdges(ctx, node, predicate)
 
 		if err == nil && count > 0 {
 			return true

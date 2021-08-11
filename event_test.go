@@ -4,6 +4,7 @@
 package netmap
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -25,9 +26,10 @@ func TestEvent(t *testing.T) {
 	g := NewGraph(NewCayleyGraphMemory())
 	defer g.Close()
 
+	ctx := context.Background()
 	for _, tt := range graphTest {
 		t.Run("Testing InsertEvent...", func(t *testing.T) {
-			got, err := g.UpsertEvent(tt.EventID)
+			got, err := g.UpsertEvent(ctx, tt.EventID)
 			if err != nil {
 				t.Errorf("Error inserting event:%v\n", err)
 			}
@@ -36,32 +38,32 @@ func TestEvent(t *testing.T) {
 			}
 		})
 
-		nodeOne, err := g.UpsertFQDN(tt.FQDN, tt.Source, tt.EventID)
+		nodeOne, err := g.UpsertFQDN(ctx, tt.FQDN, tt.Source, tt.EventID)
 		if err != nil {
 			t.Fatal("Error inserting node\n")
 		}
 
 		t.Run("Testing AddNodeToEvent...", func(t *testing.T) {
-			err := g.AddNodeToEvent(nodeOne, tt.Source, tt.EventID)
+			err := g.AddNodeToEvent(ctx, nodeOne, tt.Source, tt.EventID)
 			if err != nil {
 				t.Errorf("Error adding node to event:%v\n", err)
 			}
 		})
 
 		t.Run("Testing EventList...", func(t *testing.T) {
-			if got := g.EventList(); len(got) < 1 || got[0] != tt.EventID {
+			if got := g.EventList(ctx); len(got) < 1 || got[0] != tt.EventID {
 				t.Errorf("EventList expected %v\nGot:%v\n", tt.EventID, got)
 			}
 		})
 
 		t.Run("Testing InEventScope...", func(t *testing.T) {
-			if !g.InEventScope(Node(tt.FQDN), tt.EventID) {
+			if !g.InEventScope(ctx, Node(tt.FQDN), tt.EventID) {
 				t.Errorf("Failed to identify a node as in scope of the provided event")
 			}
 		})
 
 		t.Run("Testing EventsInScope...", func(t *testing.T) {
-			events := g.EventsInScope(tt.Domain)
+			events := g.EventsInScope(ctx, tt.Domain)
 
 			if len(events) == 0 || events[0] != tt.EventID {
 				t.Errorf("Failed to return the event associated with the provided domain")
@@ -71,7 +73,7 @@ func TestEvent(t *testing.T) {
 		t.Run("Testing EventFQDNs...", func(t *testing.T) {
 			var found bool
 
-			for _, fqdn := range g.EventFQDNs(tt.EventID) {
+			for _, fqdn := range g.EventFQDNs(ctx, tt.EventID) {
 				if fqdn == tt.FQDN {
 					found = true
 					break
@@ -85,7 +87,7 @@ func TestEvent(t *testing.T) {
 
 		t.Run("Testing EventDomains...", func(t *testing.T) {
 			var want []string
-			got := g.EventDomains(tt.EventID)
+			got := g.EventDomains(ctx, tt.EventID)
 			want = append(want, tt.Domain)
 
 			if !checkTestResult(want, got) {
@@ -95,7 +97,7 @@ func TestEvent(t *testing.T) {
 
 		t.Run("Testing EventSubdomains...", func(t *testing.T) {
 			var want []string
-			got := g.EventSubdomains(tt.EventID)
+			got := g.EventSubdomains(ctx, tt.EventID)
 			want = append(want, tt.FQDN)
 
 			if !checkTestResult(want, got) {
@@ -106,7 +108,7 @@ func TestEvent(t *testing.T) {
 		t.Run("Testing EventDateRange...", func(t *testing.T) {
 			time.Sleep(250 * time.Millisecond)
 			now := time.Now()
-			start, finish := g.EventDateRange(tt.EventID)
+			start, finish := g.EventDateRange(ctx, tt.EventID)
 
 			if err != nil {
 				t.Errorf("Error getting current time.\n%v\n", err)
