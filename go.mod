@@ -3,7 +3,8 @@ module github.com/caffix/netmap
 go 1.16
 
 require (
-	github.com/caffix/stringset v0.0.0-20210919051218-6bbfde05c69c
+	github.com/caffix/queue v0.0.0-20210919184559-3d29ef765713 // indirect
+	github.com/caffix/stringset v0.0.0-20210919182745-9e8f176e1408
 	github.com/cayleygraph/cayley v0.7.7
 	github.com/cayleygraph/quad v1.2.4
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
