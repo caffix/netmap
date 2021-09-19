@@ -47,6 +47,8 @@ func (g *Graph) NodeSources(ctx context.Context, node Node, events ...string) ([
 	}
 
 	eventset := stringset.New()
+	defer eventset.Close()
+
 	for _, event := range allevents {
 		if estr := g.NodeToID(event); estr != "" {
 			eventset.Insert(estr)
@@ -60,6 +62,8 @@ func (g *Graph) NodeSources(ctx context.Context, node Node, events ...string) ([
 
 	var sources []string
 	filter := stringset.New()
+	defer filter.Close()
+
 	for _, edge := range edges {
 		if notDataSourceSet.Has(edge.Predicate) {
 			continue

@@ -61,15 +61,21 @@ func (g *Graph) NamesToAddrs(ctx context.Context, uuid string, names ...string) 
 		nameVals = append(nameVals, quad.IRI(name))
 	}
 
-	var filter stringset.Set
+	var filter *stringset.Set
 	if len(names) > 0 {
 		filter = stringset.New(names...)
+		defer filter.Close()
 	}
 
 	var nodes *cayley.Path
 	event := quad.IRI(uuid)
 	eventNode := cayley.StartPath(g.db.store, event)
-	nameAddrMap := make(map[string]stringset.Set, len(names))
+	nameAddrMap := make(map[string]*stringset.Set, len(names))
+	defer func() {
+		for _, ss := range nameAddrMap {
+			ss.Close()
+		}
+	}()
 
 	if len(names) > 0 {
 		nodes = cayley.StartPath(g.db.store, nameVals...).Tag("name")
@@ -82,6 +88,8 @@ func (g *Graph) NamesToAddrs(ctx context.Context, uuid string, names ...string) 
 	}
 
 	set := stringset.New()
+	defer set.Close()
+
 	if err := nodes.Iterate(ctx).EachValue(g.db.store.QuadStore, func(v quad.Value) {
 		set.Insert(valToStr(v))
 	}); err != nil {
@@ -102,7 +110,7 @@ func (g *Graph) NamesToAddrs(ctx context.Context, uuid string, names ...string) 
 	if set.Len() > 0 {
 		var vals []quad.Value
 
-		for name := range set {
+		for _, name := range set.Slice() {
 			vals = append(vals, quad.IRI(name))
 		}
 
@@ -118,7 +126,7 @@ func (g *Graph) NamesToAddrs(ctx context.Context, uuid string, names ...string) 
 	return pairs, nil
 }
 
-func addrsCallback(filter stringset.Set, addrMap map[string]stringset.Set) func(m map[string]quad.Value) {
+func addrsCallback(filter *stringset.Set, addrMap map[string]*stringset.Set) func(m map[string]quad.Value) {
 	return func(m map[string]quad.Value) {
 		name := valToStr(m["name"])
 		addr := valToStr(m["address"])
@@ -155,11 +163,11 @@ func getSRVsAndCNAMEs(ctx context.Context, event, nodes *cayley.Path, f func(m m
 	}
 }
 
-func generatePairsFromAddrMap(addrMap map[string]stringset.Set) []*NameAddrPair {
+func generatePairsFromAddrMap(addrMap map[string]*stringset.Set) []*NameAddrPair {
 	pairs := make([]*NameAddrPair, 0, len(addrMap)*2)
 
 	for name, set := range addrMap {
-		for addr := range set {
+		for _, addr := range set.Slice() {
 			pairs = append(pairs, &NameAddrPair{
 				Name: name,
 				Addr: addr,

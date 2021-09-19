@@ -133,6 +133,7 @@ func (g *Graph) EventList(ctx context.Context) []string {
 
 	if nodes, err := g.AllNodesOfType(ctx, TypeEvent); err == nil {
 		ids := stringset.New()
+		defer ids.Close()
 
 		for _, node := range nodes {
 			n := g.NodeToID(node)
@@ -150,6 +151,7 @@ func (g *Graph) EventList(ctx context.Context) []string {
 // EventFQDNs returns the domains that were involved in the event.
 func (g *Graph) EventFQDNs(ctx context.Context, uuid string) []string {
 	names := stringset.New()
+	defer names.Close()
 
 	if domains := g.EventDomains(ctx, uuid); domains != nil {
 		names.InsertMany(domains...)
@@ -169,6 +171,8 @@ func (g *Graph) EventDomains(ctx context.Context, uuid string) []string {
 	}
 
 	domains := stringset.New()
+	defer domains.Close()
+
 	if edges, err := g.ReadOutEdges(ctx, event, "domain"); err == nil {
 		for _, edge := range edges {
 			if d := g.NodeToID(edge.To); d != "" {

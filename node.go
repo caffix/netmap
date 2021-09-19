@@ -41,6 +41,8 @@ func (g *Graph) AllNodesOfType(ctx context.Context, ntype string, uuids ...strin
 
 	var nodes []Node
 	filter := stringset.New()
+	defer filter.Close()
+
 	err := p.Iterate(ctx).EachValue(nil, func(value quad.Value) {
 		if nstr := valToStr(value); !filter.Has(nstr) {
 			filter.Insert(nstr)
@@ -61,6 +63,8 @@ func (g *Graph) AllOutNodes(ctx context.Context, node Node) ([]Node, error) {
 
 	var nodes []Node
 	filter := stringset.New()
+	defer filter.Close()
+
 	p := cayley.StartPath(g.db.store, quad.IRI(g.NodeToID(node))).Out().Has(quad.IRI("type"))
 	err := p.Iterate(ctx).EachValue(nil, func(value quad.Value) {
 		if nstr := valToStr(value); !filter.Has(nstr) {

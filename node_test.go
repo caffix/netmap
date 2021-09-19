@@ -103,7 +103,11 @@ func TestAllOutNodes(t *testing.T) {
 	}
 
 	got := stringset.New()
+	defer got.Close()
+
 	expected := stringset.New()
+	defer expected.Close()
+
 	expected.InsertMany("Alice", "Charles")
 	for _, node := range nodes {
 		got.Insert(g.NodeToID(node))
@@ -241,6 +245,8 @@ func TestWriteNodeQuads(t *testing.T) {
 	vType := quad.IRI("type")
 	// setup the initial data in the graph
 	expected := stringset.New()
+	defer expected.Close()
+
 	if err := g.db.store.AddQuad(quad.Make(vBob, knows, vAlice, nil)); err != nil {
 		t.Errorf("Failed to add the bob knows alice quad: %v", err)
 	}
@@ -275,6 +281,8 @@ func TestWriteNodeQuads(t *testing.T) {
 	}
 
 	got := stringset.New()
+	defer got.Close()
+
 	p := cayley.StartPath(dup.db.store).Tag("subject").OutWithTags([]string{"predicate"}).Tag("object")
 	err := p.Iterate(context.Background()).TagValues(nil, func(m map[string]quad.Value) {
 		sub := valToStr(m["subject"])

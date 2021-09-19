@@ -27,14 +27,18 @@ func TestMigrate(t *testing.T) {
 	}
 
 	fromset := quadStringSet(from)
+	defer fromset.Close()
+
 	toset := quadStringSet(to)
+	defer toset.Close()
+
 	fromset.Subtract(toset)
 	if fromset.Len() != 0 {
 		t.Errorf("Migration failed to copy all quads")
 	}
 }
 
-func quadStringSet(g *Graph) stringset.Set {
+func quadStringSet(g *Graph) *stringset.Set {
 	var err error
 	var q quad.Quad
 	set := stringset.New()

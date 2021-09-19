@@ -115,6 +115,8 @@ func (g *Graph) ReadInEdges(ctx context.Context, node Node, predicates ...string
 
 	var preds []interface{}
 	filter := stringset.New()
+	defer filter.Close()
+
 	for _, pred := range predicates {
 		if !filter.Has(pred) {
 			filter.Insert(pred)
@@ -179,6 +181,8 @@ func (g *Graph) ReadOutEdges(ctx context.Context, node Node, predicates ...strin
 
 	var preds []interface{}
 	filter := stringset.New()
+	defer filter.Close()
+
 	for _, pred := range predicates {
 		if !filter.Has(pred) {
 			filter.Insert(pred)

@@ -13,7 +13,11 @@ import (
 
 func checkTestResult(want, got []string) bool {
 	wset := stringset.New(want...)
+	defer wset.Close()
+
 	gset := stringset.New(got...)
+	defer gset.Close()
+
 	if gset.Len() != wset.Len() {
 		return false
 	}

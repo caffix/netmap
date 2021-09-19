@@ -77,7 +77,11 @@ func TestReadProperties(t *testing.T) {
 	}
 
 	got := stringset.New()
+	defer got.Close()
+
 	expected := stringset.New()
+	defer expected.Close()
+
 	expected.InsertMany("Person")
 	for _, property := range properties {
 		got.Insert(valToStr(property.Value))
@@ -101,7 +105,11 @@ func TestReadProperties(t *testing.T) {
 	}
 
 	got = stringset.New()
+	defer got.Close()
+
 	expected = stringset.New()
+	defer expected.Close()
+
 	expected.InsertMany("Person", "coffee", "Go")
 	for _, property := range properties {
 		got.Insert(valToStr(property.Value))
@@ -117,7 +125,11 @@ func TestReadProperties(t *testing.T) {
 	}
 
 	got = stringset.New()
+	defer got.Close()
+
 	expected = stringset.New()
+	defer expected.Close()
+
 	expected.InsertMany("coffee", "Go")
 	for _, property := range properties {
 		got.Insert(valToStr(property.Value))
