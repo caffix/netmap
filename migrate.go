@@ -6,11 +6,9 @@ package netmap
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/writer"
 	"github.com/cayleygraph/quad"
 )
 
@@ -32,7 +30,7 @@ func (g *Graph) Migrate(ctx context.Context, to *Graph) error {
 		}
 	}
 
-	return copyQuads(to.db, quads)
+	return copyQuads(ctx, to.db, quads)
 }
 
 // MigrateEvents copies the nodes and edges related to the Events identified by the uuids from the receiver Graph into another.
@@ -40,9 +38,8 @@ func (g *Graph) MigrateEvents(ctx context.Context, to *Graph, uuids ...string) e
 	quads, err := g.ReadEventQuads(ctx, uuids...)
 
 	if err == nil {
-		err = copyQuads(to.db, quads)
+		err = copyQuads(ctx, to.db, quads)
 	}
-
 	return err
 }
 
@@ -77,23 +74,29 @@ func (g *Graph) MigrateEventsInScope(ctx context.Context, to *Graph, d []string)
 	return g.MigrateEvents(ctx, to, uuids...)
 }
 
-func copyQuads(to *CayleyGraph, quads []quad.Quad) error {
+func copyQuads(ctx context.Context, to *CayleyGraph, quads []quad.Quad) error {
 	to.Lock()
 	defer to.Unlock()
-
-	opts := make(graph.Options)
-	opts["ignore_missing"] = true
-	opts["ignore_duplicate"] = true
 
 	if len(quads) == 0 {
 		return errors.New("copyQuads: No quads provided")
 	}
 
-	w, err := writer.NewSingleReplication(to.store, opts)
-	if err != nil {
-		return fmt.Errorf("copyQuads: %v", err)
+	tx := graph.NewTransactionN(len(quads))
+	opts := graph.IgnoreOpts{
+		IgnoreMissing: true,
+		IgnoreDup:     true,
 	}
-	defer w.Close()
 
-	return w.AddQuadSet(quads)
+	for _, q := range quads {
+		select {
+		case <-ctx.Done():
+			return errors.New("copyQuads: context expired")
+		default:
+		}
+
+		tx.AddQuad(q)
+	}
+
+	return to.store.ApplyDeltas(tx.Deltas, opts)
 }

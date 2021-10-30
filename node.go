@@ -176,7 +176,7 @@ func (g *Graph) WriteNodeQuads(ctx context.Context, cg *Graph, nodes []Node) err
 		return fmt.Errorf("%s: WriteNodeQuads: Failed to iterate over node tags: %v", g.String(), err)
 	}
 
-	return copyQuads(g.db, quads)
+	return copyQuads(ctx, g.db, quads)
 }
 
 func (g *CayleyGraph) nodeExists(ctx context.Context, id, ntype string) bool {
