@@ -133,12 +133,13 @@ func (g *Graph) ReadInEdges(ctx context.Context, node Node, predicates ...string
 	p = p.Has(quad.IRI("type")).Tag("object")
 
 	var edges []*Edge
-	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
+	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) error {
 		edges = append(edges, &Edge{
 			Predicate: valToStr(m["predicate"]),
 			From:      valToStr(m["object"]),
 			To:        node,
 		})
+		return nil
 	})
 
 	if err == nil && len(edges) == 0 {
@@ -199,12 +200,13 @@ func (g *Graph) ReadOutEdges(ctx context.Context, node Node, predicates ...strin
 	p = p.Has(quad.IRI("type")).Tag("object")
 
 	var edges []*Edge
-	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
+	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) error {
 		edges = append(edges, &Edge{
 			Predicate: valToStr(m["predicate"]),
 			From:      node,
 			To:        valToStr(m["object"]),
 		})
+		return nil
 	})
 
 	if err == nil && len(edges) == 0 {

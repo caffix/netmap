@@ -43,11 +43,12 @@ func (g *Graph) AllNodesOfType(ctx context.Context, ntype string, uuids ...strin
 	filter := stringset.New()
 	defer filter.Close()
 
-	err := p.Iterate(ctx).EachValue(nil, func(value quad.Value) {
+	err := p.Iterate(ctx).EachValue(nil, func(value quad.Value) error {
 		if nstr := valToStr(value); !filter.Has(nstr) {
 			filter.Insert(nstr)
 			nodes = append(nodes, nstr)
 		}
+		return nil
 	})
 
 	if err == nil && len(nodes) == 0 {
@@ -66,11 +67,12 @@ func (g *Graph) AllOutNodes(ctx context.Context, node Node) ([]Node, error) {
 	defer filter.Close()
 
 	p := cayley.StartPath(g.db.store, quad.IRI(g.NodeToID(node))).Out().Has(quad.IRI("type"))
-	err := p.Iterate(ctx).EachValue(nil, func(value quad.Value) {
+	err := p.Iterate(ctx).EachValue(nil, func(value quad.Value) error {
 		if nstr := valToStr(value); !filter.Has(nstr) {
 			filter.Insert(nstr)
 			nodes = append(nodes, nstr)
 		}
+		return nil
 	})
 
 	if err == nil && len(nodes) == 0 {
@@ -143,8 +145,9 @@ func (g *Graph) DeleteNode(ctx context.Context, node Node) error {
 func (g *CayleyGraph) quadsDeleteNode(ctx context.Context, t *graph.Transaction, id string) error {
 	p := cayley.StartPath(g.store, quad.IRI(id)).Tag(
 		"subject").BothWithTags([]string{"predicate"}).Tag("object")
-	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
+	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) error {
 		t.RemoveQuad(quad.Make(m["subject"], m["predicate"], m["object"], nil))
+		return nil
 	})
 	if err != nil {
 		return fmt.Errorf("%s: quadsDeleteNode: Failed to iterate over %s tags: %v", g.String(), id, err)
@@ -165,12 +168,13 @@ func (g *Graph) WriteNodeQuads(ctx context.Context, cg *Graph, nodes []Node) err
 
 	var quads []quad.Quad
 	p := cayley.StartPath(cg.db.store, nodeValues...).Tag("subject").OutWithTags([]string{"predicate"}).Tag("object")
-	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
+	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) error {
 		var label quad.Value
 		if valToStr(m["predicate"]) == "type" {
 			label = quad.IRI(valToStr(m["object"]))
 		}
 		quads = append(quads, quad.Make(m["subject"], m["predicate"], m["object"], label))
+		return nil
 	})
 	if err != nil {
 		return fmt.Errorf("%s: WriteNodeQuads: Failed to iterate over node tags: %v", g.String(), err)

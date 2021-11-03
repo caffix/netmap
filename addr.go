@@ -90,8 +90,9 @@ func (g *Graph) NamesToAddrs(ctx context.Context, uuid string, names ...string) 
 	set := stringset.New()
 	defer set.Close()
 
-	if err := nodes.Iterate(ctx).EachValue(g.db.store.QuadStore, func(v quad.Value) {
+	if err := nodes.Iterate(ctx).EachValue(g.db.store.QuadStore, func(v quad.Value) error {
 		set.Insert(valToStr(v))
+		return nil
 	}); err != nil {
 		return nil, fmt.Errorf("%s: NamesToAddrs: Failed to iterate over node values: %v", g.String(), err)
 	}
@@ -126,23 +127,24 @@ func (g *Graph) NamesToAddrs(ctx context.Context, uuid string, names ...string) 
 	return pairs, nil
 }
 
-func addrsCallback(filter *stringset.Set, addrMap map[string]*stringset.Set) func(m map[string]quad.Value) {
-	return func(m map[string]quad.Value) {
+func addrsCallback(filter *stringset.Set, addrMap map[string]*stringset.Set) func(m map[string]quad.Value) error {
+	return func(m map[string]quad.Value) error {
 		name := valToStr(m["name"])
 		addr := valToStr(m["address"])
 
 		if filter != nil && !filter.Has(name) {
-			return
+			return nil
 		}
 		if _, found := addrMap[name]; !found {
 			addrMap[name] = stringset.New()
 		}
 
 		addrMap[name].Insert(addr)
+		return nil
 	}
 }
 
-func getSRVsAndCNAMEs(ctx context.Context, event, nodes *cayley.Path, f func(m map[string]quad.Value)) {
+func getSRVsAndCNAMEs(ctx context.Context, event, nodes *cayley.Path, f func(m map[string]quad.Value) error) {
 	p := nodes
 
 	for i := 1; i <= 10; i++ {

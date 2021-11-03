@@ -59,8 +59,9 @@ func (g *Graph) MigrateEventsInScope(ctx context.Context, to *Graph, d []string)
 	g.db.Lock()
 	// Obtain the events that are in scope according to the domain name arguments
 	p := cayley.StartPath(g.db.store, domains...).Has(quad.IRI("type"), quad.String(TypeFQDN)).SaveReverse(quad.IRI("domain"), "uuid")
-	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
+	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) error {
 		vals[valToStr(m["uuid"])] = struct{}{}
+		return nil
 	})
 	g.db.Unlock()
 	if err != nil {

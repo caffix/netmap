@@ -134,8 +134,9 @@ func (g *CayleyGraph) DumpGraph(ctx context.Context) string {
 
 	var out string
 	p := cayley.StartPath(g.store).Tag("subject").OutWithTags([]string{"predicate"}).Tag("object")
-	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
+	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) error {
 		out += fmt.Sprintf("%s -> %s -> %s\n", m["subject"], m["predicate"], m["object"])
+		return nil
 	})
 	if err != nil {
 		return ""

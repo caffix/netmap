@@ -284,11 +284,12 @@ func TestWriteNodeQuads(t *testing.T) {
 	defer got.Close()
 
 	p := cayley.StartPath(dup.db.store).Tag("subject").OutWithTags([]string{"predicate"}).Tag("object")
-	err := p.Iterate(context.Background()).TagValues(nil, func(m map[string]quad.Value) {
+	err := p.Iterate(context.Background()).TagValues(nil, func(m map[string]quad.Value) error {
 		sub := valToStr(m["subject"])
 		pred := valToStr(m["predicate"])
 		obj := valToStr(m["object"])
 		got.Insert(sub + pred + obj)
+		return nil
 	})
 	if err != nil {
 		t.Errorf("Failed to iterate over the tags: %v", err)

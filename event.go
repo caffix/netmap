@@ -120,8 +120,9 @@ func (g *Graph) EventsInScope(ctx context.Context, d ...string) []string {
 
 	var events []string
 	p := cayley.StartPath(g.db.store, domains...).In(quad.IRI("domain")).Unique()
-	_ = p.Iterate(ctx).EachValue(nil, func(value quad.Value) {
+	_ = p.Iterate(ctx).EachValue(nil, func(value quad.Value) error {
 		events = append(events, valToStr(value))
+		return nil
 	})
 
 	return events
@@ -239,7 +240,7 @@ func (g *Graph) ReadEventQuads(ctx context.Context, uuids ...string) ([]quad.Qua
 	// Build quads for the events in scope
 	p := cayley.StartPath(g.db.store, events...).Has(quad.IRI("type"), quad.String(TypeEvent))
 	p = p.Tag("subject").OutWithTags([]string{"predicate"}).Tag("object")
-	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
+	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) error {
 		if isIRI(m["object"]) {
 			nodeMap[valToStr(m["object"])] = m["object"]
 		}
@@ -250,6 +251,7 @@ func (g *Graph) ReadEventQuads(ctx context.Context, uuids ...string) ([]quad.Qua
 		}
 
 		quads = append(quads, quad.Make(m["subject"], m["predicate"], m["object"], label))
+		return nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("MigrateEvents: Failed to iterate over the events: %v", err)
@@ -263,13 +265,14 @@ func (g *Graph) ReadEventQuads(ctx context.Context, uuids ...string) ([]quad.Qua
 	// Build quads for all nodes associated with the events in scope
 	p = cayley.StartPath(g.db.store, nodes...).Has(quad.IRI("type"))
 	p = p.Tag("subject").OutWithTags([]string{"predicate"}).Tag("object")
-	err = p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
+	err = p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) error {
 		var label quad.Value
 		if valToStr(m["predicate"]) == "type" {
 			label = quad.IRI(valToStr(m["object"]))
 		}
 
 		quads = append(quads, quad.Make(m["subject"], m["predicate"], m["object"], label))
+		return nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("MigrateEvents: Failed to iterate over the event nodes: %v", err)

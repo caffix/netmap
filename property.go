@@ -66,7 +66,7 @@ func (g *Graph) ReadProperties(ctx context.Context, node Node, predicates ...str
 	}
 	p = p.Tag("object")
 
-	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) {
+	err := p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) error {
 		// Check if this is actually a node and not a property
 		if !isIRI(m["object"]) {
 			properties = append(properties, &Property{
@@ -74,6 +74,7 @@ func (g *Graph) ReadProperties(ctx context.Context, node Node, predicates ...str
 				Value:     m["object"],
 			})
 		}
+		return nil
 	})
 	// Given the data model, valid nodes should always have at least one
 	// property, and for that reason, it doesn't need to be checked here
@@ -98,10 +99,11 @@ func (g *Graph) CountProperties(ctx context.Context, node Node, predicates ...st
 	}
 
 	var count int
-	err := p.Iterate(ctx).EachValue(nil, func(value quad.Value) {
+	err := p.Iterate(ctx).EachValue(nil, func(value quad.Value) error {
 		if !isIRI(value) {
 			count++
 		}
+		return nil
 	})
 	return count, err
 }
