@@ -257,25 +257,22 @@ func (g *Graph) ReadEventQuads(ctx context.Context, uuids ...string) ([]quad.Qua
 		return nil, fmt.Errorf("MigrateEvents: Failed to iterate over the events: %v", err)
 	}
 
-	var nodes []quad.Value
-	for _, v := range nodeMap {
-		nodes = append(nodes, v)
-	}
-
 	// Build quads for all nodes associated with the events in scope
-	p = cayley.StartPath(g.db.store, nodes...).Has(quad.IRI("type"))
-	p = p.Tag("subject").OutWithTags([]string{"predicate"}).Tag("object")
-	err = p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) error {
-		var label quad.Value
-		if valToStr(m["predicate"]) == "type" {
-			label = quad.IRI(valToStr(m["object"]))
-		}
+	for _, v := range nodeMap {
+		p = cayley.StartPath(g.db.store, v).Has(quad.IRI("type"))
+		p = p.Tag("subject").OutWithTags([]string{"predicate"}).Tag("object")
+		err = p.Iterate(ctx).TagValues(nil, func(m map[string]quad.Value) error {
+			var label quad.Value
+			if valToStr(m["predicate"]) == "type" {
+				label = quad.IRI(valToStr(m["object"]))
+			}
 
-		quads = append(quads, quad.Make(m["subject"], m["predicate"], m["object"], label))
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("MigrateEvents: Failed to iterate over the event nodes: %v", err)
+			quads = append(quads, quad.Make(m["subject"], m["predicate"], m["object"], label))
+			return nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("MigrateEvents: Failed to iterate over the event nodes: %v", err)
+		}
 	}
 
 	return quads, nil
