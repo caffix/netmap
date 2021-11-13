@@ -16,21 +16,27 @@ func (g *Graph) Migrate(ctx context.Context, to *Graph) error {
 	g.db.Lock()
 	defer g.db.Unlock()
 
-	var err error
-	var q quad.Quad
-	var quads []quad.Quad
-
-	rr := graph.NewResultReader(g.db.store, nil)
+	rr := graph.NewQuadStoreReader(g.db.store)
 	defer rr.Close()
 
-	for err == nil {
-		q, err = rr.ReadQuad()
-		if err == nil {
+	for {
+		var quads []quad.Quad
+
+		for i := 0; i < 50; i++ {
+			q, err := rr.ReadQuad()
+			if err != nil {
+				break
+			}
 			quads = append(quads, q)
 		}
+
+		if len(quads) == 0 {
+			break
+		}
+		copyQuads(ctx, to.db, quads)
 	}
 
-	return copyQuads(ctx, to.db, quads)
+	return nil
 }
 
 // MigrateEvents copies the nodes and edges related to the Events identified by the uuids from the receiver Graph into another.
