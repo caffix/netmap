@@ -1,5 +1,6 @@
-// Copyright 2017-2021 Jeff Foley. All rights reserved.
+// Copyright © by Jeff Foley 2017-2022. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+// SPDX-License-Identifier: Apache-2.0
 
 package netmap
 
@@ -55,7 +56,7 @@ func TestNameToAddrs(t *testing.T) {
 		t.Errorf("Did not return an error when provided parameters not existing in the graph")
 	}
 
-	g.UpsertA(ctx, fqdn, addr, "test", event)
+	_ = g.UpsertA(ctx, fqdn, addr, "test", event)
 	if pairs, err := g.NamesToAddrs(ctx, event); err != nil ||
 		pairs[0].Name != fqdn || pairs[0].Addr != addr {
 		t.Errorf("Failed to obtain the name / address pairs: %v", err)

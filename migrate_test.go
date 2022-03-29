@@ -1,5 +1,6 @@
-// Copyright 2017-2021 Jeff Foley. All rights reserved.
+// Copyright © by Jeff Foley 2017-2022. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+// SPDX-License-Identifier: Apache-2.0
 
 package netmap
 
@@ -20,8 +21,8 @@ func TestMigrate(t *testing.T) {
 	defer to.Close()
 
 	ctx := context.Background()
-	from.UpsertA(ctx, "www.google.com", "192.168.1.1", "DNS", "event1")
-	from.UpsertA(ctx, "www.caffix.net", "10.0.1.1", "DNS", "event2")
+	_ = from.UpsertA(ctx, "www.google.com", "192.168.1.1", "DNS", "event1")
+	_ = from.UpsertA(ctx, "www.caffix.net", "10.0.1.1", "DNS", "event2")
 	if err := from.Migrate(ctx, to); err != nil {
 		t.Errorf("Migration failed to copy graph data")
 	}
@@ -67,8 +68,8 @@ func TestMigrateEventsInScope(t *testing.T) {
 		t.Errorf("Failed to report an error when provided no domain for scope")
 	}
 
-	from.UpsertA(ctx, "www.google.com", "192.168.1.1", "DNS", "event1")
-	from.UpsertA(ctx, "www.caffix.net", "10.0.1.1", "DNS", "event2")
+	_ = from.UpsertA(ctx, "www.google.com", "192.168.1.1", "DNS", "event1")
+	_ = from.UpsertA(ctx, "www.caffix.net", "10.0.1.1", "DNS", "event2")
 	if err := from.MigrateEventsInScope(ctx, to, []string{"google.com"}); err != nil {
 		t.Errorf("Migration failed to copy graph data including the provided domain: %v", err)
 	}

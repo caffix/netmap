@@ -1,5 +1,6 @@
-// Copyright 2017-2021 Jeff Foley. All rights reserved.
+// Copyright © by Jeff Foley 2017-2022. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+// SPDX-License-Identifier: Apache-2.0
 
 package netmap
 
@@ -19,8 +20,8 @@ func (g *Graph) UpsertAS(ctx context.Context, asn, desc, source, eventID string)
 	n := Node(asn)
 	t := graph.NewTransaction()
 
-	var err error
-	if err := g.quadsUpsertAS(ctx, t, asn, desc, source, eventID); err == nil {
+	err := g.quadsUpsertAS(ctx, t, asn, desc, source, eventID)
+	if err == nil {
 		err = g.db.applyWithLock(t)
 	}
 	return n, err
