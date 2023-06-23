@@ -1,59 +1,45 @@
-// Copyright 2017-2021 Jeff Foley. All rights reserved.
+// Copyright © by Jeff Foley 2017-2023. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+// SPDX-License-Identifier: Apache-2.0
 
 package netmap
 
 import (
-	"context"
-	"sync"
-	"time"
+	"fmt"
+	"math/rand"
 
-	"github.com/cayleygraph/quad"
+	db "github.com/owasp-amass/asset-db"
+	"github.com/owasp-amass/asset-db/repository"
 )
 
-// Graph implements the network infrastructure data model.
+// Graph is the object for managing a network infrastructure link graph.
 type Graph struct {
-	db            *CayleyGraph
-	alreadyClosed bool
-
-	// eventFinishes maintains a cache of the latest finish time for each event
-	// This reduces roundtrips to the graph when adding nodes to events.
-	eventFinishes   map[string]time.Time
-	eventFinishLock sync.Mutex
+	DB *db.AssetDB
 }
 
-// NewGraph accepts a graph database that stores the Graph created and maintained by the data model.
-func NewGraph(database *CayleyGraph) *Graph {
-	if database == nil {
+// NewGraph returns an intialized Graph object.
+func NewGraph(system, path string, options string) *Graph {
+	var dsn string
+	var dbtype repository.DBType
+
+	switch system {
+	case "memory":
+		dbtype = repository.SQLite
+		dsn = fmt.Sprintf("file:sqlite%d?mode=memory&cache=shared", rand.Int31n(100))
+	case "local":
+		dbtype = repository.SQLite
+		dsn = path
+	case "postgres":
+		dbtype = repository.Postgres
+		dsn = path
+	default:
 		return nil
 	}
 
-	return &Graph{
-		db:            database,
-		eventFinishes: make(map[string]time.Time),
+	store := db.New(dbtype, dsn)
+	if store == nil {
+		return nil
 	}
-}
 
-// Close will close the graph database being used by the Graph receiver.
-func (g *Graph) Close() {
-	if !g.alreadyClosed {
-		g.alreadyClosed = true
-		g.db.Close()
-	}
-}
-
-// String returns the name of the graph database used by the Graph.
-func (g *Graph) String() string {
-	return g.db.String()
-}
-
-// DumpGraph prints all data currently in the graph.
-func (g *Graph) DumpGraph(ctx context.Context) string {
-	return g.db.DumpGraph(ctx)
-}
-
-func isIRI(val quad.Value) bool {
-	_, ok := val.(quad.IRI)
-
-	return ok
+	return &Graph{DB: store}
 }
