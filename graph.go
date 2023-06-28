@@ -29,44 +29,6 @@ type Graph struct {
 
 // NewGraph returns an intialized Graph object.
 func NewGraph(system, path string, options string) *Graph {
-	g := OpenGraph(system, path, options)
-	if g == nil {
-		return nil
-	}
-
-	var name string
-	var fs embed.FS
-	var database gorm.Dialector
-	switch g.dbtype {
-	case repository.SQLite:
-		name = "sqlite3"
-		fs = sqlitemigrations.Migrations()
-		database = sqlite.Open(g.dsn)
-	case repository.Postgres:
-		name = "postgres"
-		fs = pgmigrations.Migrations()
-		database = postgres.Open(g.dsn)
-	}
-
-	sql, err := gorm.Open(database, &gorm.Config{})
-	if err != nil {
-		return nil, err
-	}
-
-	migrationsSource := migrate.EmbedFileSystemMigrationSource{
-		FileSystem: fs,
-		Root:       "/",
-	}
-
-	_, err = migrate.Exec(sql.DB(), name, migrationsSource, migrate.Up)
-	if err != nil {
-		panic(err)
-	}
-	return g
-}
-
-// OpenGraph opens and returns a netmap Graph object for the specified database.
-func OpenGraph(system, path string, options string) *Graph {
 	var dsn string
 	var dbtype repository.DBType
 
@@ -89,11 +51,42 @@ func OpenGraph(system, path string, options string) *Graph {
 		return nil
 	}
 
-	return &Graph{
+	g := &Graph{
 		DB:     store,
 		dsn:    dsn,
 		dbtype: dbtype,
 	}
+
+	var name string
+	var fs embed.FS
+	var database gorm.Dialector
+	switch dbtype {
+	case repository.SQLite:
+		name = "sqlite3"
+		fs = sqlitemigrations.Migrations()
+		database = sqlite.Open(g.dsn)
+	case repository.Postgres:
+		name = "postgres"
+		fs = pgmigrations.Migrations()
+		database = postgres.Open(g.dsn)
+	}
+
+	sql, err := gorm.Open(database, &gorm.Config{})
+	if err != nil {
+		return nil
+	}
+
+	migrationsSource := migrate.EmbedFileSystemMigrationSource{
+		FileSystem: fs,
+		Root:       "/",
+	}
+
+	s, _ := sql.DB()
+	_, err = migrate.Exec(s, name, migrationsSource, migrate.Up)
+	if err != nil {
+		panic(err)
+	}
+	return g
 }
 
 func (g *Graph) Remove() {
