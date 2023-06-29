@@ -7,67 +7,59 @@ package netmap
 import (
 	"context"
 	"testing"
+
+	"github.com/owasp-amass/open-asset-model/network"
 )
 
 func TestAddress(t *testing.T) {
-	g := NewGraph(NewCayleyGraphMemory())
-	defer g.Close()
+	g := NewGraph("memory", "", "")
+	defer g.Remove()
 
-	for _, tt := range graphTest {
-		t.Run("Testing UpsertAddress...", func(t *testing.T) {
-			got, err := g.UpsertAddress(context.Background(), tt.Addr, tt.Source, tt.EventID)
+	t.Run("Testing UpsertAddress...", func(t *testing.T) {
+		want := "192.168.1.1"
 
-			if err != nil {
-				t.Errorf("Error inserting address:%v\n", err)
-			}
+		if got, err := g.UpsertAddress(context.Background(), want); err != nil {
+			t.Errorf("error inserting address:%v\n", err)
+		} else if a, ok := got.Asset.(*network.IPAddress); !ok || a.Address.String() != want {
+			t.Error("IP address was not returned properly")
+		}
+	})
 
-			if got != tt.Addr {
-				t.Errorf("Name of node was not returned properly.\nExpected:%v\nGot:%v\n", tt.Addr, got)
-			}
-		})
+	t.Run("Testing UpsertA...", func(t *testing.T) {
+		err := g.UpsertA(context.Background(), "owasp.org", "192.168.1.1")
+		if err != nil {
+			t.Errorf("error inserting fqdn: %v", err)
+		}
+	})
 
-		t.Run("Testing UpsertA...", func(t *testing.T) {
-			err := g.UpsertA(context.Background(), tt.FQDN, tt.Addr, tt.Source, tt.EventID)
-			if err != nil {
-				t.Errorf("Error inserting fqdn:%v\n", err)
-			}
-		})
+	t.Run("Testing UpsertAAAA...", func(t *testing.T) {
+		err := g.UpsertAAAA(context.Background(), "owasp.org", "2001:0db8:85a3:0000:0000:8a2e:0370:7334")
 
-		t.Run("Testing UpsertAAAA...", func(t *testing.T) {
-			err := g.UpsertAAAA(context.Background(), tt.FQDN, tt.Addr, tt.Source, tt.EventID)
-
-			if err != nil {
-				t.Errorf("Error inserting AAAA record: %v\n", err)
-			}
-		})
-	}
+		if err != nil {
+			t.Errorf("error inserting AAAA record: %v", err)
+		}
+	})
 }
 
 func TestNameToAddrs(t *testing.T) {
 	fqdn := "caffix.net"
 	addr := "192.168.1.1"
-	event := "uniqueID"
 
-	g := NewGraph(NewCayleyGraphMemory())
-	defer g.Close()
+	g := NewGraph("memory", "", "")
+	defer g.Remove()
 
 	ctx := context.Background()
-	if _, err := g.NamesToAddrs(ctx, event, fqdn); err == nil {
-		t.Errorf("Did not return an error when provided parameters not existing in the graph")
+	if _, err := g.NamesToAddrs(ctx, fqdn); err == nil {
+		t.Errorf("did not return an error when provided parameters not existing in the graph")
 	}
 
-	_ = g.UpsertA(ctx, fqdn, addr, "test", event)
-	if pairs, err := g.NamesToAddrs(ctx, event); err != nil ||
-		pairs[0].Name != fqdn || pairs[0].Addr != addr {
-		t.Errorf("Failed to obtain the name / address pairs: %v", err)
+	_ = g.UpsertA(ctx, fqdn, addr)
+	if pairs, err := g.NamesToAddrs(ctx, fqdn); err != nil ||
+		pairs[0].FQDN.Name != fqdn || pairs[0].Addr.Address.String() != addr {
+		t.Errorf("failed to obtain the name / address pairs: %v", err)
 	}
 
-	if pairs, err := g.NamesToAddrs(ctx, event, fqdn); err != nil ||
-		pairs[0].Name != fqdn || pairs[0].Addr != addr {
-		t.Errorf("Failed to obtain the name / address pairs: %v", err)
-	}
-
-	if pairs, err := g.NamesToAddrs(ctx, event, "doesnot.exist"); err == nil {
-		t.Errorf("Did not return an error when provided a name not existing in the graph: %v", pairs)
+	if pairs, err := g.NamesToAddrs(ctx, "doesnot.exist"); err == nil {
+		t.Errorf("did not return an error when provided a name not existing in the graph: %v", pairs)
 	}
 }

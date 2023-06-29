@@ -6,31 +6,23 @@ package netmap
 
 import (
 	"context"
-	"net"
 	"testing"
+
+	"github.com/owasp-amass/open-asset-model/network"
 )
 
 func TestNetblock(t *testing.T) {
-	g := NewGraph(NewCayleyGraphMemory())
-	for _, tt := range graphTest {
-		t.Run("Testing UpsertNetblock...", func(t *testing.T) {
-			got, err := g.UpsertNetblock(context.Background(), tt.CIDR, tt.Source, tt.EventID)
-			if err != nil {
-				t.Errorf("Error inserting netblock.\n%v\n", err)
+	g := NewGraph("memory", "", "")
+	defer g.Remove()
 
-			}
+	t.Run("Testing UpsertNetblock...", func(t *testing.T) {
+		a, err := g.UpsertNetblock(context.Background(), "10.0.0.0/8")
+		if err != nil {
+			t.Errorf("error inserting netblock: %v", err)
+		}
 
-			get, _, err := net.ParseCIDR(got.(string))
-			want, _, _ := net.ParseCIDR(tt.CIDR)
-
-			if err != nil {
-				t.Errorf("Error parsing node's cidr info from netblock.\n%v\n", got)
-			}
-			if !net.IP.Equal(get, want) {
-				t.Errorf("Expected: %v\nGot: %v\n", want, get)
-			}
-		})
-
-	}
-
+		if netblock, ok := a.Asset.(*network.Netblock); !ok || netblock.Cidr.String() != "10.0.0.0/8" {
+			t.Error("insert returned an invalid netblock")
+		}
+	})
 }

@@ -6,29 +6,32 @@ package netmap
 
 import (
 	"context"
+	"fmt"
+	"net/netip"
 
-	"github.com/cayleygraph/cayley/graph"
+	"github.com/owasp-amass/asset-db/types"
+	"github.com/owasp-amass/open-asset-model/network"
 )
 
-const TypeNetblock string = "netblock"
-
 // UpsertNetblock adds a netblock/CIDR to the graph.
-func (g *Graph) UpsertNetblock(ctx context.Context, cidr, source, eventID string) (Node, error) {
-	t := graph.NewTransaction()
-
-	if err := g.quadsUpsertNetblock(t, cidr, source, eventID); err != nil {
+func (g *Graph) UpsertNetblock(ctx context.Context, cidr string) (*types.Asset, error) {
+	prefix, err := netip.ParsePrefix(cidr)
+	if err != nil {
 		return nil, err
 	}
 
-	return Node(cidr), g.db.applyWithLock(t)
-}
+	var t string
+	ip := prefix.Addr()
+	if ip.Is4() {
+		t = "IPv4"
+	} else if ip.Is6() {
+		t = "IPv6"
+	} else {
+		return nil, fmt.Errorf("%s is not a valid IPv4 or IPv6 IP address", ip.String())
+	}
 
-func (g *Graph) quadsUpsertNetblock(t *graph.Transaction, cidr, source, eventID string) error {
-	if err := g.db.quadsUpsertNode(t, cidr, TypeNetblock); err != nil {
-		return err
-	}
-	if err := g.quadsAddNodeToEvent(t, cidr, source, eventID); err != nil {
-		return err
-	}
-	return nil
+	return g.DB.Create(nil, "", &network.Netblock{
+		Cidr: prefix,
+		Type: t,
+	})
 }

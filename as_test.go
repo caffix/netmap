@@ -6,56 +6,53 @@ package netmap
 
 import (
 	"context"
-	"strconv"
 	"testing"
+
+	"github.com/owasp-amass/open-asset-model/network"
 )
 
 func TestAS(t *testing.T) {
-	g := NewGraph(NewCayleyGraphMemory())
-	defer g.Close()
+	g := NewGraph("memory", "", "")
+	defer g.Remove()
 
-	newdesc := "Great ASN"
-	for _, tt := range graphTest {
-		t.Run("Testing UpsertAS...", func(t *testing.T) {
-			got, err := g.UpsertAS(context.Background(), tt.ASNString, tt.Desc, tt.Source, tt.EventID)
+	asn := 667
+	newdesc := "Great AS"
+	cidr := "10.0.0.0/8"
+	addr := "10.0.0.1"
 
-			if err != nil {
-				t.Errorf("Error inserting AS: %v\n", err)
-			}
-			if got != tt.ASNString {
-				t.Errorf("Returned value for InsertAS is not the same as test asn string:\ngot: %v\nwant: %v\n", got, tt.ASNString)
-			}
-		})
+	t.Run("Testing UpsertAS...", func(t *testing.T) {
+		got, err := g.UpsertAS(context.Background(), asn, newdesc)
+		if err != nil {
+			t.Errorf("error inserting AS: %v\n", err)
+		}
 
-		t.Run("Testing UpsertInfrastructure", func(t *testing.T) {
-			err := g.UpsertInfrastructure(context.Background(), tt.ASN, newdesc, tt.Addr, tt.CIDR, tt.Source, tt.EventID)
-			if err != nil {
-				t.Errorf("Error inserting infrastructure: %v\n", err)
-			}
-		})
+		if as, ok := got.Asset.(*network.AutonomousSystem); !ok {
+			t.Error("failed to read the inserted autonomous system")
+		} else if as.Number != asn {
+			t.Errorf("returned value for InsertAS is not the same as the test asn value. got: %d, want: %d", as.Number, asn)
+		}
+	})
 
-		t.Run("Testing ReadASDescription", func(t *testing.T) {
-			var got string
+	t.Run("Testing UpsertInfrastructure", func(t *testing.T) {
+		err := g.UpsertInfrastructure(context.Background(), asn, newdesc, addr, cidr)
+		if err != nil {
+			t.Errorf("error inserting infrastructure: %v", err)
+		}
+	})
 
-			if asn, err := strconv.Atoi(tt.ASNString); err == nil {
-				got = g.ReadASDescription(context.Background(), asn)
-			}
+	t.Run("Testing ReadASDescription", func(t *testing.T) {
+		got := g.ReadASDescription(context.Background(), asn)
 
-			if got != newdesc {
-				t.Errorf("Expected: %v\nGot: %v\n", newdesc, got)
-			}
-		})
+		if got != newdesc {
+			t.Errorf("expected: %v, got: %v", newdesc, got)
+		}
+	})
 
-		t.Run("Testing ReadASPrefixes", func(t *testing.T) {
-			var got []string
+	t.Run("Testing ReadASPrefixes", func(t *testing.T) {
+		got := g.ReadASPrefixes(context.Background(), asn)
 
-			if asn, err := strconv.Atoi(tt.ASNString); err == nil {
-				got = g.ReadASPrefixes(context.Background(), asn)
-			}
-
-			if len(got) != 1 || got[0] != tt.CIDR {
-				t.Errorf("Expected: %v\nGot: %v\n", tt.CIDR, got)
-			}
-		})
-	}
+		if len(got) != 1 || got[0] != cidr {
+			t.Errorf("expected: %v, got: %v\n", cidr, got[0])
+		}
+	})
 }

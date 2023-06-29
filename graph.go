@@ -81,8 +81,12 @@ func NewGraph(system, path string, options string) *Graph {
 		Root:       "/",
 	}
 
-	s, _ := sql.DB()
-	_, err = migrate.Exec(s, name, migrationsSource, migrate.Up)
+	sqlDb, err := sql.DB()
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = migrate.Exec(sqlDb, name, migrationsSource, migrate.Up)
 	if err != nil {
 		panic(err)
 	}
