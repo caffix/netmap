@@ -73,19 +73,14 @@ func (g *Graph) NamesToAddrs(ctx context.Context, names ...string) ([]*NameAddrP
 	}
 	var targets []*target
 	// Obtain the assets that could have address relations
-loop:
 	for _, a := range fqdns {
 		if fqdn, ok := a.Asset.(domain.FQDN); ok {
 			if filter.Has(fqdn.Name) {
 				continue
 			}
-			targets = append(targets, &target{
-				fqdn:  &fqdn,
-				asset: a,
-			})
 
 			cur := a
-			// Get all the assets for service names and CNAMES
+			// Get to the end of the alias chains for service names and CNAMES
 			for i := 1; i <= 10; i++ {
 				if n, ok := cur.Asset.(domain.FQDN); ok {
 					filter.Insert(n.Name)
@@ -102,19 +97,14 @@ loop:
 							continue
 						}
 						cur = found
-
-						if _, ok := cur.Asset.(*network.IPAddress); ok {
-							targets = append(targets, &target{
-								fqdn:  &fqdn,
-								asset: cur,
-							})
-							continue loop
-						}
 					}
-				} else {
-					continue loop
 				}
 			}
+
+			targets = append(targets, &target{
+				fqdn:  &fqdn,
+				asset: cur,
+			})
 		}
 	}
 
