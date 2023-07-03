@@ -46,9 +46,6 @@ type NameAddrPair struct {
 
 // NamesToAddrs returns a NameAddrPair for each name / address combination discovered in the graph.
 func (g *Graph) NamesToAddrs(ctx context.Context, names ...string) ([]*NameAddrPair, error) {
-	filter := stringset.New()
-	defer filter.Close()
-
 	nameAddrMap := make(map[string]*stringset.Set, len(names))
 	defer func() {
 		for _, ss := range nameAddrMap {
@@ -57,11 +54,16 @@ func (g *Graph) NamesToAddrs(ctx context.Context, names ...string) ([]*NameAddrP
 	}()
 
 	var fqdns []*types.Asset
+	filter := stringset.New()
 	for _, name := range names {
 		if a, err := g.DB.FindByContent(&domain.FQDN{Name: name}); err == nil && len(a) > 0 {
-			fqdns = append(fqdns, a[0])
+			if !filter.Has(name) {
+				fqdns = append(fqdns, a[0])
+				filter.Insert(name)
+			}
 		}
 	}
+	filter.Close()
 
 	if len(fqdns) == 0 {
 		return nil, errors.New("no names to query")
@@ -75,16 +77,9 @@ func (g *Graph) NamesToAddrs(ctx context.Context, names ...string) ([]*NameAddrP
 	// Obtain the assets that could have address relations
 	for _, a := range fqdns {
 		if fqdn, ok := a.Asset.(domain.FQDN); ok {
-			if filter.Has(fqdn.Name) {
-				continue
-			}
-
 			cur := a
 			// Get to the end of the alias chains for service names and CNAMES
 			for i := 1; i <= 10; i++ {
-				if n, ok := cur.Asset.(domain.FQDN); ok {
-					filter.Insert(n.Name)
-				}
 				reltypes := []string{"cname_record"}
 				if i == 1 {
 					reltypes = append(reltypes, "srv_record")
@@ -92,12 +87,13 @@ func (g *Graph) NamesToAddrs(ctx context.Context, names ...string) ([]*NameAddrP
 
 				if rels, err := g.DB.OutgoingRelations(cur, reltypes...); err == nil && len(rels) > 0 {
 					for _, rel := range rels {
-						found, err := g.DB.FindById(rel.ToAsset.ID)
-						if err != nil {
-							continue
+						if found, err := g.DB.FindById(rel.ToAsset.ID); err == nil {
+							cur = found
+							break
 						}
-						cur = found
 					}
+				} else {
+					break
 				}
 			}
 
