@@ -60,12 +60,7 @@ func (g *Graph) IsPTRNode(ctx context.Context, fqdn string, since time.Time) boo
 }
 
 // UpsertSRV adds the FQDNs and SRV record between them to the graph.
-func (g *Graph) UpsertSRV(ctx context.Context, fqdn, service, target string) error {
-	// Create the edge between the service and the subdomain
-	if err := g.insertAlias(ctx, service, fqdn, "srv_record"); err != nil {
-		return err
-	}
-	// Create the edge between the service and the target
+func (g *Graph) UpsertSRV(ctx context.Context, service, target string) error {
 	return g.insertAlias(ctx, service, target, "srv_record")
 }
 

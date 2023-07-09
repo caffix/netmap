@@ -52,7 +52,7 @@ func TestFQDN(t *testing.T) {
 	})
 
 	t.Run("Testing UpsertSRV...", func(t *testing.T) {
-		if err := g.UpsertSRV(ctx, name, service, name); err != nil {
+		if err := g.UpsertSRV(ctx, service, name); err != nil {
 			t.Errorf("failed inserting service into database: %v", err)
 		}
 	})
