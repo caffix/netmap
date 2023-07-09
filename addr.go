@@ -82,7 +82,7 @@ func (g *Graph) NamesToAddrs(ctx context.Context, since time.Time, names ...stri
 			// Get to the end of the alias chains for service names and CNAMES
 			for i := 1; i <= 10; i++ {
 				reltypes := []string{"cname_record"}
-				if i == 1 {
+				if i == 1 || i == 2 {
 					reltypes = append(reltypes, "srv_record")
 				}
 
