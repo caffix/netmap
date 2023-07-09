@@ -6,6 +6,7 @@ package netmap
 
 import (
 	"context"
+	"time"
 
 	"github.com/owasp-amass/asset-db/types"
 	"github.com/owasp-amass/open-asset-model/network"
@@ -51,14 +52,14 @@ func (g *Graph) UpsertInfrastructure(ctx context.Context, asn int, desc, addr, c
 }
 
 // ReadASDescription the description property of an autonomous system in the graph.
-func (g *Graph) ReadASDescription(ctx context.Context, asn int) string {
-	assets, err := g.DB.FindByContent(&network.AutonomousSystem{Number: asn})
+func (g *Graph) ReadASDescription(ctx context.Context, asn int, since time.Time) string {
+	assets, err := g.DB.FindByContent(&network.AutonomousSystem{Number: asn}, since)
 	if err != nil || len(assets) == 0 {
 		return ""
 	}
 
-	if rels, err := g.DB.OutgoingRelations(assets[0], "managed_by"); err == nil && len(rels) > 0 {
-		a, err := g.DB.FindById(rels[0].ToAsset.ID)
+	if rels, err := g.DB.OutgoingRelations(assets[0], since, "managed_by"); err == nil && len(rels) > 0 {
+		a, err := g.DB.FindById(rels[0].ToAsset.ID, since)
 		if err != nil {
 			return ""
 		} else if rir, ok := a.Asset.(network.RIROrganization); ok {
@@ -69,17 +70,17 @@ func (g *Graph) ReadASDescription(ctx context.Context, asn int) string {
 	return ""
 }
 
-func (g *Graph) ReadASPrefixes(ctx context.Context, asn int) []string {
+func (g *Graph) ReadASPrefixes(ctx context.Context, asn int, since time.Time) []string {
 	var prefixes []string
 
-	assets, err := g.DB.FindByContent(&network.AutonomousSystem{Number: asn})
+	assets, err := g.DB.FindByContent(&network.AutonomousSystem{Number: asn}, since)
 	if err != nil || len(assets) == 0 {
 		return prefixes
 	}
 
-	if rels, err := g.DB.OutgoingRelations(assets[0], "announces"); err == nil && len(rels) > 0 {
+	if rels, err := g.DB.OutgoingRelations(assets[0], since, "announces"); err == nil && len(rels) > 0 {
 		for _, rel := range rels {
-			if a, err := g.DB.FindById(rel.ToAsset.ID); err != nil {
+			if a, err := g.DB.FindById(rel.ToAsset.ID, since); err != nil {
 				continue
 			} else if netblock, ok := a.Asset.(network.Netblock); ok {
 				prefixes = append(prefixes, netblock.Cidr.String())

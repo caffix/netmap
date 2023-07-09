@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/netip"
+	"time"
 
 	"github.com/caffix/stringset"
 	"github.com/owasp-amass/asset-db/types"
@@ -45,7 +46,7 @@ type NameAddrPair struct {
 }
 
 // NamesToAddrs returns a NameAddrPair for each name / address combination discovered in the graph.
-func (g *Graph) NamesToAddrs(ctx context.Context, names ...string) ([]*NameAddrPair, error) {
+func (g *Graph) NamesToAddrs(ctx context.Context, since time.Time, names ...string) ([]*NameAddrPair, error) {
 	nameAddrMap := make(map[string]*stringset.Set, len(names))
 	defer func() {
 		for _, ss := range nameAddrMap {
@@ -56,7 +57,7 @@ func (g *Graph) NamesToAddrs(ctx context.Context, names ...string) ([]*NameAddrP
 	var fqdns []*types.Asset
 	filter := stringset.New()
 	for _, name := range names {
-		if a, err := g.DB.FindByContent(&domain.FQDN{Name: name}); err == nil && len(a) > 0 {
+		if a, err := g.DB.FindByContent(&domain.FQDN{Name: name}, since); err == nil && len(a) > 0 {
 			if !filter.Has(name) {
 				fqdns = append(fqdns, a[0])
 				filter.Insert(name)
@@ -85,9 +86,9 @@ func (g *Graph) NamesToAddrs(ctx context.Context, names ...string) ([]*NameAddrP
 					reltypes = append(reltypes, "srv_record")
 				}
 
-				if rels, err := g.DB.OutgoingRelations(cur, reltypes...); err == nil && len(rels) > 0 {
+				if rels, err := g.DB.OutgoingRelations(cur, since, reltypes...); err == nil && len(rels) > 0 {
 					for _, rel := range rels {
-						if found, err := g.DB.FindById(rel.ToAsset.ID); err == nil {
+						if found, err := g.DB.FindById(rel.ToAsset.ID, since); err == nil {
 							cur = found
 							break
 						}
@@ -109,7 +110,7 @@ func (g *Graph) NamesToAddrs(ctx context.Context, names ...string) ([]*NameAddrP
 	}
 
 	for _, tar := range targets {
-		if rels, err := g.DB.OutgoingRelations(tar.asset, "a_record", "aaaa_record"); err == nil && len(rels) > 0 {
+		if rels, err := g.DB.OutgoingRelations(tar.asset, since, "a_record", "aaaa_record"); err == nil && len(rels) > 0 {
 			name := tar.fqdn.Name
 
 			for _, rel := range rels {
@@ -117,7 +118,7 @@ func (g *Graph) NamesToAddrs(ctx context.Context, names ...string) ([]*NameAddrP
 					nameAddrMap[name] = stringset.New()
 				}
 
-				found, err := g.DB.FindById(rel.ToAsset.ID)
+				found, err := g.DB.FindById(rel.ToAsset.ID, since)
 				if err != nil {
 					continue
 				}

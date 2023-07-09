@@ -7,6 +7,7 @@ package netmap
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/owasp-amass/open-asset-model/network"
 )
@@ -41,7 +42,7 @@ func TestAS(t *testing.T) {
 	})
 
 	t.Run("Testing ReadASDescription", func(t *testing.T) {
-		got := g.ReadASDescription(context.Background(), asn)
+		got := g.ReadASDescription(context.Background(), asn, time.Time{})
 
 		if got != newdesc {
 			t.Errorf("expected: %v, got: %v", newdesc, got)
@@ -49,7 +50,7 @@ func TestAS(t *testing.T) {
 	})
 
 	t.Run("Testing ReadASPrefixes", func(t *testing.T) {
-		got := g.ReadASPrefixes(context.Background(), asn)
+		got := g.ReadASPrefixes(context.Background(), asn, time.Time{})
 
 		if len(got) != 1 || got[0] != cidr {
 			t.Errorf("expected: %v, got: %v\n", cidr, got[0])

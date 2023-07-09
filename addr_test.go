@@ -7,6 +7,7 @@ package netmap
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/owasp-amass/open-asset-model/network"
 )
@@ -49,17 +50,17 @@ func TestNameToAddrs(t *testing.T) {
 	defer g.Remove()
 
 	ctx := context.Background()
-	if _, err := g.NamesToAddrs(ctx, fqdn); err == nil {
+	if _, err := g.NamesToAddrs(ctx, time.Time{}, fqdn); err == nil {
 		t.Errorf("did not return an error when provided parameters not existing in the graph")
 	}
 
 	_ = g.UpsertA(ctx, fqdn, addr)
-	if pairs, err := g.NamesToAddrs(ctx, fqdn); err != nil ||
+	if pairs, err := g.NamesToAddrs(ctx, time.Time{}, fqdn); err != nil ||
 		pairs[0].FQDN.Name != fqdn || pairs[0].Addr.Address.String() != addr {
 		t.Errorf("failed to obtain the name / address pairs: %v", err)
 	}
 
-	if pairs, err := g.NamesToAddrs(ctx, "doesnot.exist"); err == nil {
+	if pairs, err := g.NamesToAddrs(ctx, time.Time{}, "doesnot.exist"); err == nil {
 		t.Errorf("did not return an error when provided a name not existing in the graph: %v", pairs)
 	}
 }

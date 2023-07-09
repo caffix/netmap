@@ -6,6 +6,7 @@ package netmap
 
 import (
 	"context"
+	"time"
 
 	"github.com/owasp-amass/asset-db/types"
 	"github.com/owasp-amass/open-asset-model/domain"
@@ -29,8 +30,8 @@ func (g *Graph) UpsertCNAME(ctx context.Context, fqdn, target string) error {
 }
 
 // IsCNAMENode returns true if the FQDN has a CNAME edge to another FQDN in the graph.
-func (g *Graph) IsCNAMENode(ctx context.Context, fqdn string) bool {
-	return g.checkForOutEdge(ctx, fqdn, "cname_record")
+func (g *Graph) IsCNAMENode(ctx context.Context, fqdn string, since time.Time) bool {
+	return g.checkForOutEdge(ctx, fqdn, "cname_record", since)
 }
 
 func (g *Graph) insertAlias(ctx context.Context, fqdn, target, relation string) error {
@@ -54,8 +55,8 @@ func (g *Graph) UpsertPTR(ctx context.Context, fqdn, target string) error {
 }
 
 // IsPTRNode returns true if the FQDN has a PTR edge to another FQDN in the graph.
-func (g *Graph) IsPTRNode(ctx context.Context, fqdn string) bool {
-	return g.checkForOutEdge(ctx, fqdn, "ptr_record")
+func (g *Graph) IsPTRNode(ctx context.Context, fqdn string, since time.Time) bool {
+	return g.checkForOutEdge(ctx, fqdn, "ptr_record", since)
 }
 
 // UpsertSRV adds the FQDNs and SRV record between them to the graph.
@@ -74,8 +75,8 @@ func (g *Graph) UpsertNS(ctx context.Context, fqdn, target string) error {
 }
 
 // IsNSNode returns true if the FQDN has a NS edge pointing to it in the graph.
-func (g *Graph) IsNSNode(ctx context.Context, fqdn string) bool {
-	return g.checkForInEdge(ctx, fqdn, "ns_record")
+func (g *Graph) IsNSNode(ctx context.Context, fqdn string, since time.Time) bool {
+	return g.checkForInEdge(ctx, fqdn, "ns_record", since)
 }
 
 // UpsertMX adds the FQDNs and MX record between them to the graph.
@@ -84,15 +85,15 @@ func (g *Graph) UpsertMX(ctx context.Context, fqdn, target string) error {
 }
 
 // IsMXNode returns true if the FQDN has a MX edge pointing to it in the graph.
-func (g *Graph) IsMXNode(ctx context.Context, fqdn string) bool {
-	return g.checkForInEdge(ctx, fqdn, "mx_record")
+func (g *Graph) IsMXNode(ctx context.Context, fqdn string, since time.Time) bool {
+	return g.checkForInEdge(ctx, fqdn, "mx_record", since)
 }
 
-func (g *Graph) checkForInEdge(ctx context.Context, id, relation string) bool {
-	if assets, err := g.DB.FindByContent(&domain.FQDN{Name: id}); err == nil {
+func (g *Graph) checkForInEdge(ctx context.Context, id, relation string, since time.Time) bool {
+	if assets, err := g.DB.FindByContent(&domain.FQDN{Name: id}, since); err == nil {
 		for _, a := range assets {
 			if fqdn, ok := a.Asset.(domain.FQDN); ok && fqdn.Name == id {
-				if rels, err := g.DB.IncomingRelations(a, relation); err == nil && len(rels) > 0 {
+				if rels, err := g.DB.IncomingRelations(a, since, relation); err == nil && len(rels) > 0 {
 					return true
 				}
 				break
@@ -102,11 +103,11 @@ func (g *Graph) checkForInEdge(ctx context.Context, id, relation string) bool {
 	return false
 }
 
-func (g *Graph) checkForOutEdge(ctx context.Context, id, relation string) bool {
-	if assets, err := g.DB.FindByContent(&domain.FQDN{Name: id}); err == nil {
+func (g *Graph) checkForOutEdge(ctx context.Context, id, relation string, since time.Time) bool {
+	if assets, err := g.DB.FindByContent(&domain.FQDN{Name: id}, since); err == nil {
 		for _, a := range assets {
 			if fqdn, ok := a.Asset.(domain.FQDN); ok && fqdn.Name == id {
-				if rels, err := g.DB.OutgoingRelations(a, relation); err == nil && len(rels) > 0 {
+				if rels, err := g.DB.OutgoingRelations(a, since, relation); err == nil && len(rels) > 0 {
 					return true
 				}
 				break

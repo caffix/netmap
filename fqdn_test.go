@@ -7,6 +7,7 @@ package netmap
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/owasp-amass/open-asset-model/domain"
 )
@@ -33,7 +34,7 @@ func TestFQDN(t *testing.T) {
 	})
 
 	t.Run("Testing IsCNAMENode...", func(t *testing.T) {
-		if !g.IsCNAMENode(ctx, name) {
+		if !g.IsCNAMENode(ctx, name, time.Time{}) {
 			t.Error("failed to obtain CNAME from node")
 		}
 	})
@@ -45,7 +46,7 @@ func TestFQDN(t *testing.T) {
 	})
 
 	t.Run("Testing IsPTRNode...", func(t *testing.T) {
-		if !g.IsPTRNode(ctx, name) {
+		if !g.IsPTRNode(ctx, name, time.Time{}) {
 			t.Errorf("failed to find PTRNode: %s", name)
 		}
 	})
@@ -63,7 +64,7 @@ func TestFQDN(t *testing.T) {
 	})
 
 	t.Run("Testing IsNSNode...", func(t *testing.T) {
-		if !g.IsNSNode(ctx, name) {
+		if !g.IsNSNode(ctx, name, time.Time{}) {
 			t.Error("failed to locate NS node")
 		}
 	})
@@ -75,7 +76,7 @@ func TestFQDN(t *testing.T) {
 	})
 
 	t.Run("Testing IsMXNode...", func(t *testing.T) {
-		if !g.IsMXNode(ctx, name) {
+		if !g.IsMXNode(ctx, name, time.Time{}) {
 			t.Errorf("failed to locate MX node")
 		}
 	})
