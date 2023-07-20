@@ -10,13 +10,13 @@ import (
 	"math/rand"
 	"os"
 
+	"github.com/glebarez/sqlite"
 	db "github.com/owasp-amass/asset-db"
 	pgmigrations "github.com/owasp-amass/asset-db/migrations/postgres"
 	sqlitemigrations "github.com/owasp-amass/asset-db/migrations/sqlite3"
 	"github.com/owasp-amass/asset-db/repository"
 	migrate "github.com/rubenv/sql-migrate"
 	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
