@@ -57,8 +57,8 @@ func (g *Graph) NamesToAddrs(ctx context.Context, since time.Time, names ...stri
 	var fqdns []*types.Asset
 	filter := stringset.New()
 	for _, name := range names {
-		if a, err := g.DB.FindByContent(&domain.FQDN{Name: name}, since); err == nil && len(a) > 0 {
-			if !filter.Has(name) {
+		if !filter.Has(name) {
+			if a, err := g.DB.FindByContent(&domain.FQDN{Name: name}, since); err == nil && len(a) > 0 {
 				fqdns = append(fqdns, a[0])
 				filter.Insert(name)
 			}
