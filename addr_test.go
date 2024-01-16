@@ -55,7 +55,7 @@ func TestNameToAddrs(t *testing.T) {
 	}
 
 	_ = g.UpsertA(ctx, fqdn, addr)
-	if pairs, err := g.NamesToAddrs(ctx, time.Time{}, fqdn); err != nil ||
+	if pairs, err := g.NamesToAddrs(ctx, time.Time{}, fqdn); err != nil || len(pairs) == 0 ||
 		pairs[0].FQDN.Name != fqdn || pairs[0].Addr.Address.String() != addr {
 		t.Errorf("failed to obtain the name / address pairs: %v", err)
 	}

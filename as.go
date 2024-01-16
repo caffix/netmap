@@ -62,7 +62,7 @@ func (g *Graph) ReadASDescription(ctx context.Context, asn int, since time.Time)
 		a, err := g.DB.FindById(rels[0].ToAsset.ID, since)
 		if err != nil {
 			return ""
-		} else if rir, ok := a.Asset.(network.RIROrganization); ok {
+		} else if rir, ok := a.Asset.(*network.RIROrganization); ok {
 			return rir.Name
 		}
 	}
@@ -82,7 +82,7 @@ func (g *Graph) ReadASPrefixes(ctx context.Context, asn int, since time.Time) []
 		for _, rel := range rels {
 			if a, err := g.DB.FindById(rel.ToAsset.ID, since); err != nil {
 				continue
-			} else if netblock, ok := a.Asset.(network.Netblock); ok {
+			} else if netblock, ok := a.Asset.(*network.Netblock); ok {
 				prefixes = append(prefixes, netblock.Cidr.String())
 			}
 		}

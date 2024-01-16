@@ -22,7 +22,7 @@ func TestFQDN(t *testing.T) {
 	t.Run("Testing UpsertFQDN...", func(t *testing.T) {
 		if a, err := g.UpsertFQDN(ctx, name); err != nil {
 			t.Errorf("failed inserting FQDN: %v", err)
-		} else if fqdn, ok := a.Asset.(domain.FQDN); !ok || fqdn.Name != name {
+		} else if fqdn, ok := a.Asset.(*domain.FQDN); !ok || fqdn.Name != name {
 			t.Error("error expecting FQDN")
 		}
 	})

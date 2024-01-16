@@ -53,7 +53,7 @@ func TestAS(t *testing.T) {
 		got := g.ReadASPrefixes(context.Background(), asn, time.Time{})
 
 		if len(got) != 1 || got[0] != cidr {
-			t.Errorf("expected: %v, got: %v\n", cidr, got[0])
+			t.Errorf("expected: %v, got: %v\n", cidr, got)
 		}
 	})
 }

@@ -87,7 +87,7 @@ func (g *Graph) IsMXNode(ctx context.Context, fqdn string, since time.Time) bool
 func (g *Graph) checkForInEdge(ctx context.Context, id, relation string, since time.Time) bool {
 	if assets, err := g.DB.FindByContent(&domain.FQDN{Name: id}, since); err == nil {
 		for _, a := range assets {
-			if fqdn, ok := a.Asset.(domain.FQDN); ok && fqdn.Name == id {
+			if fqdn, ok := a.Asset.(*domain.FQDN); ok && fqdn.Name == id {
 				if rels, err := g.DB.IncomingRelations(a, since, relation); err == nil && len(rels) > 0 {
 					return true
 				}
@@ -101,7 +101,7 @@ func (g *Graph) checkForInEdge(ctx context.Context, id, relation string, since t
 func (g *Graph) checkForOutEdge(ctx context.Context, id, relation string, since time.Time) bool {
 	if assets, err := g.DB.FindByContent(&domain.FQDN{Name: id}, since); err == nil {
 		for _, a := range assets {
-			if fqdn, ok := a.Asset.(domain.FQDN); ok && fqdn.Name == id {
+			if fqdn, ok := a.Asset.(*domain.FQDN); ok && fqdn.Name == id {
 				if rels, err := g.DB.OutgoingRelations(a, since, relation); err == nil && len(rels) > 0 {
 					return true
 				}
